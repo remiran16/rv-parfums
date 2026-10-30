@@ -31,6 +31,32 @@
     return Object.fromEntries(new FormData($("#product-form")).entries());
   }
 
+  // MOSTRAR LOS CAMPOS SEGÚN LA MODALIDAD
+  function togglePriceFields() {
+    const f = $("#product-form");
+    const type = f.elements.sale_type.value;
+    const unitField = $("#unit-price-field");
+    const mlFields = $("#ml-price-fields");
+
+    const unitInput = f.elements.price_unit;
+    const price5 = f.elements.price_5ml;
+    const price10 = f.elements.price_10ml;
+
+    const isMl = type === "ml";
+
+    unitField.hidden = isMl;
+    mlFields.hidden = !isMl;
+
+    unitInput.disabled = isMl;
+    unitInput.required = !isMl;
+
+    price5.disabled = !isMl;
+    price10.disabled = !isMl;
+
+    price5.required = isMl;
+    price10.required = isMl;
+  }
+
   async function checkSession() {
     if (!db) {
       $("#login-message").textContent = "Primero configurá Supabase en config.js.";
@@ -77,8 +103,11 @@
             <small>${esc(p.brand || "")}</small>
           </td>
           <td>
-            <small>5 ml: ${money(p.price_5ml)}</small>
-            <small>10 ml: ${money(p.price_10ml)}</small>
+            ${p.sale_type === "ml"
+              ? `<small>5 ml: ${money(p.price_5ml)}</small>
+                 <small>10 ml: ${money(p.price_10ml)}</small>`
+              : `<small>Por unidad: ${money(p.price)}</small>`
+            }
           </td>
           <td>
             <input class="stock-input" type="number" min="0"
@@ -200,14 +229,23 @@
     const f = $("#product-form");
 
     for (const k of [
-      "id", "name", "brand", "category", "description",
-      "price_5ml", "price_10ml", "stock"
+      "id", "name", "brand", "category", "description", "stock"
     ]) {
       f.elements[k].value = p[k] ?? "";
     }
 
+    const type = p.sale_type || "unit";
+    f.elements.sale_type.value = type;
+
+    f.elements.price_unit.value = type === "unit" ? (p.price ?? "") : "";
+    f.elements.price_5ml.value = p.price_5ml ?? "";
+    f.elements.price_10ml.value = p.price_10ml ?? "";
+
     f.elements.active.checked = !!p.active;
-    $("#form-title").textContent = "Editar perfume";
+
+    togglePriceFields();
+
+    $("#form-title").textContent = "Editar producto";
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -241,14 +279,31 @@
     const f = $("#product-form");
     const d = formData();
     const id = d.id || null;
+    const type = d.sale_type;
+
     let image_url = null;
+    let price5 = 0;
+    let price10 = 0;
+    let priceUnit = 0;
 
-    const price5 = Number(d.price_5ml);
-    const price10 = Number(d.price_10ml);
+    if (type === "ml") {
+      price5 = Number(d.price_5ml);
+      price10 = Number(d.price_10ml);
 
-    if (price5 < 0 || price10 < 0) {
-      msg("#product-message", "Los precios no pueden ser negativos.");
-      return;
+      if (price5 <= 0 || price10 <= 0) {
+        msg("#product-message", "Ingresá precios válidos para 5 ml y 10 ml.");
+        return;
+      }
+    } else {
+      priceUnit = Number(d.price_unit);
+
+      if (priceUnit <= 0) {
+        msg("#product-message", "Ingresá un precio válido por unidad.");
+        return;
+      }
+
+      // Compatibilidad con el campo de precio anterior
+      price5 = priceUnit;
     }
 
     const file = f.elements.image.files[0];
@@ -281,7 +336,8 @@
       brand: d.brand.trim(),
       category: d.category.trim(),
       description: d.description.trim(),
-      price: price5,
+      sale_type: type,
+      price: type === "ml" ? price5 : priceUnit,
       price_5ml: price5,
       price_10ml: price10,
       stock: Number(d.stock),
@@ -304,7 +360,10 @@
     f.reset();
     f.elements.id.value = "";
     f.elements.active.checked = true;
-    $("#form-title").textContent = "Agregar perfume";
+    f.elements.sale_type.value = "unit";
+    togglePriceFields();
+
+    $("#form-title").textContent = "Agregar producto";
 
     await loadInventory();
   }
@@ -333,13 +392,19 @@
 
     $("#product-form").onsubmit = saveProduct;
 
+    $("#sale-type").addEventListener("change", togglePriceFields);
+
     $("#reset-form").onclick = () => {
       $("#product-form").reset();
       $("#product-form").elements.id.value = "";
-      $("#form-title").textContent = "Agregar perfume";
+      $("#product-form").elements.sale_type.value = "unit";
+      togglePriceFields();
+      $("#form-title").textContent = "Agregar producto";
       msg("#product-message", "");
     };
 
+    togglePriceFields();
     checkSession();
   });
 })();
+  
