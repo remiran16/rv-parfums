@@ -1,448 +1,661 @@
 
-(() => {
-  const cfg = window.STORE_CONFIG || {};
+const { createClient } = window.supabase;
 
-  const db = (
-    cfg.SUPABASE_URL &&
-    cfg.SUPABASE_ANON_KEY &&
-    window.supabase
-  )
-    ? window.supabase.createClient(
-        cfg.SUPABASE_URL,
-        cfg.SUPABASE_ANON_KEY
-      )
-    : null;
+const supabaseClient = createClient(
+  window.STORE_CONFIG.SUPABASE_URL,
+  window.STORE_CONFIG.SUPABASE_ANON_KEY
+);
 
-  const $ = (selector) => document.querySelector(selector);
+const WHATSAPP_NUMBER = window.STORE_CONFIG.WHATSAPP_NUMBER;
 
-  const money = (value) =>
-    `${cfg.CURRENCY || "Gs."} ${Number(value || 0).toLocaleString("es-PY")}`;
+let products = [];
+let cart = [];
+let currentProduct = null;
+let selectedSize = null;
+let modalQuantity = 1;
 
-  let products = [];
-  let cart = [];
+const $ = (selector) => document.querySelector(selector);
 
-  function toast(message) {
-    const element = $("#toast");
+const money = (value) =>
+  `${window.STORE_CONFIG.CURRENCY} ${Number(value || 0).toLocaleString("es-PY")}`;
 
-    if (!element) {
-      alert(message);
-      return;
-    }
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[char]);
+}
 
-    element.textContent = message;
-    element.classList.add("show");
-    setTimeout(() => element.classList.remove("show"), 3000);
+function showToast(message) {
+  const toast = $("#toast");
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.classList.add("show");
+
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2500);
+}
+
+// ------------------------------
+// CARGAR PRODUCTOS
+// ------------------------------
+
+async function loadProducts() {
+  const grid = $("#product-grid");
+  if (!grid) return;
+
+  grid.innerHTML = "<p>Cargando productos...</p>";
+
+  const { data, error } = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("active", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error cargando productos:", error);
+    grid.innerHTML = "<p>No se pudieron cargar los productos.</p>";
+    return;
   }
 
-  function escapeHtml(value = "") {
-    return String(value).replace(/[&<>"']/g, character => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    })[character]);
+  products = data || [];
+  renderProducts();
+  updateCategories();
+}
+
+function getProductPrice(product) {
+  if (product.sale_type === "ml") {
+    return Number(product.price_5ml || product.price || 0);
   }
 
-  function getPrice(product, size) {
-    if (size === "5 ml") {
-      return Number(product.price_5ml || product.price || 0);
-    }
-
-    return Number(product.price_10ml || 0);
-  }
-
-  // CARGAR PRODUCTOS
-  async function loadProducts() {
-    const grid = $("#product-grid");
-
-    if (!db) {
-      grid.innerHTML =
-        '<div class="notice">Error de conexión con la tienda.</div>';
-      return;
-    }
-
-    const { data, error } = await db
-      .from("products")
-      .select("*")
-      .eq("active", true)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("ERROR PRODUCTOS:", error);
-      grid.innerHTML =
-        '<div class="notice">No se pudo cargar el catálogo.</div>';
-      return;
-    }
-
-    products = data || [];
-
-    renderProducts();
-
-    const categories = [
-      ...new Set(products.map(p => p.category).filter(Boolean))
-    ].sort();
-
-    $("#category-filter").innerHTML =
-      '<option value="">Todas las categorías</option>' +
-      categories.map(category =>
-        `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`
-      ).join("");
-  }
-
-  // MOSTRAR PRODUCTOS
-  function renderProducts() {
-    const grid = $("#product-grid");
-    const search = ($("#search").value || "").toLowerCase();
-    const category = $("#category-filter").value;
-
-    const found = products.filter(product => {
-      const text =
-        `${product.name} ${product.brand || ""} ${product.description || ""}`
-          .toLowerCase();
-
-      return text.includes(search) &&
-        (!category || product.category === category);
-    });
-
-    grid.innerHTML = found.length
-      ? found.map(product => {
-          const price5 = getPrice(product, "5 ml");
-          const price10 = getPrice(product, "10 ml");
-          const unavailable = Number(product.stock) <= 0;
-
-          return `
-            <article class="product-card">
-              <div class="product-image">
-                <img
-                  src="${escapeHtml(product.image_url || "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80")}"
-                  alt="${escapeHtml(product.name)}"
-                  loading="lazy"
-                >
-                ${unavailable
-                  ? '<span class="sold-out">AGOTADO</span>'
-                  : ""}
-              </div>
-
-              <div class="product-info">
-                <p class="product-brand">
-                  ${escapeHtml(product.brand || product.category || "FRAGANCIA")}
-                </p>
-
-                <h3>${escapeHtml(product.name)}</h3>
-
-                <p class="product-desc">
-                  ${escapeHtml(product.description || "Una fragancia para destacar.")}
-                </p>
-
-                <label class="size-label" for="size-${escapeHtml(product.id)}">
-                  PRESENTACIÓN
-                </label>
-
-                <select
-                  class="size-select"
-                  id="size-${escapeHtml(product.id)}"
-                  data-size="${escapeHtml(product.id)}"
-                >
-                  <option value="5 ml">5 ml — ${money(price5)}</option>
-                  <option value="10 ml" ${price10 <= 0 ? "disabled" : ""}>
-                    10 ml — ${price10 > 0 ? money(price10) : "Precio no disponible"}
-                  </option>
-                </select>
-
-                <div class="product-bottom">
-                  <strong data-product-price="${escapeHtml(product.id)}">
-                    ${money(price5)}
-                  </strong>
-
-                  <button
-                    class="add-button"
-                    data-add="${escapeHtml(product.id)}"
-                    ${unavailable || price5 <= 0 ? "disabled" : ""}
-                  >
-                    ${unavailable ? "SIN STOCK" : "＋ AGREGAR"}
-                  </button>
-                </div>
-              </div>
-            </article>
-          `;
-        }).join("")
-      : '<div class="notice">No encontramos productos.</div>';
-
-    // CAMBIAR PRECIO SEGÚN PRESENTACIÓN
-    grid.querySelectorAll("[data-size]").forEach(select => {
-      select.addEventListener("change", () => {
-        const product = products.find(
-          p => String(p.id) === String(select.dataset.size)
-        );
-
-        if (!product) return;
-
-        const price = getPrice(product, select.value);
-        const priceElement = grid.querySelector(
-          `[data-product-price="${select.dataset.size}"]`
-        );
-        const addButton = grid.querySelector(
-          `[data-add="${select.dataset.size}"]`
-        );
-
-        priceElement.textContent = money(price);
-        addButton.disabled =
-          Number(product.stock) <= 0 || price <= 0;
-      });
-    });
-
-    // AGREGAR AL CARRITO
-    grid.querySelectorAll("[data-add]").forEach(button => {
-      button.addEventListener("click", () => {
-        const select = grid.querySelector(
-          `[data-size="${button.dataset.add}"]`
-        );
-
-        addToCart(button.dataset.add, select.value);
-      });
-    });
-  }
-
-  // AGREGAR AL CARRITO
-  function addToCart(id, size) {
-    const product = products.find(
-      p => String(p.id) === String(id)
-    );
-
-    if (!product) return;
-
-    const price = getPrice(product, size);
-
-    if (price <= 0) {
-      return toast("Esta presentación todavía no tiene precio.");
-    }
-
-    const key = `${id}-${size}`;
-
-    const item = cart.find(p => p.key === key);
-
-    if (item) {
-      if (item.qty >= product.stock) {
-        return toast("No hay más unidades disponibles.");
-      }
-
-      item.qty++;
-    } else {
-      cart.push({
-        key,
-        id: product.id,
-        name: product.name,
-        size,
-        price,
-        qty: 1,
-        stock: Number(product.stock)
-      });
-    }
-
-    renderCart();
-    toast("¡Producto agregado al carrito!");
-  }
-
-  // MOSTRAR CARRITO
-  function renderCart() {
-    const count = cart.reduce(
-      (sum, item) => sum + item.qty, 0
-    );
-
-    const total = cart.reduce(
-      (sum, item) => sum + item.price * item.qty, 0
-    );
-
-    $("#cart-count").textContent = count;
-    $("#cart-total").textContent = money(total);
-
-    $("#cart-items").innerHTML = cart.length
-      ? cart.map(item => `
-        <div class="cart-line">
-          <div>
-            <b>${escapeHtml(item.name)} (${escapeHtml(item.size)})</b>
-            <small>${money(item.price)} c/u</small>
-          </div>
-
-          <div class="qty">
-            <button type="button" data-minus="${escapeHtml(item.key)}">−</button>
-            <span>${item.qty}</span>
-            <button type="button" data-plus="${escapeHtml(item.key)}">+</button>
-          </div>
-
-          <strong>${money(item.price * item.qty)}</strong>
-        </div>
-      `).join("")
-      : '<p class="muted">Tu carrito está vacío.</p>';
-
-    $("#cart-items").querySelectorAll("[data-minus]").forEach(button => {
-      button.onclick = () => changeQty(button.dataset.minus, -1);
-    });
-
-    $("#cart-items").querySelectorAll("[data-plus]").forEach(button => {
-      button.onclick = () => changeQty(button.dataset.plus, 1);
-    });
-  }
-
-  // MODIFICAR CANTIDAD
-  function changeQty(key, difference) {
-    const item = cart.find(p => p.key === key);
-
-    if (!item) return;
-
-    if (difference > 0 && item.qty >= item.stock) {
-      return toast("No hay más unidades disponibles.");
-    }
-
-    item.qty += difference;
-
-    if (item.qty <= 0) {
-      cart = cart.filter(p => p.key !== key);
-    }
-
-    renderCart();
-  }
-
-  // ABRIR Y CERRAR CARRITO
-  function toggleCart(open) {
-    $("#cart-panel").classList.toggle("open", open);
-    $("#cart-overlay").classList.toggle("show", open);
-  }
-
-  // FINALIZAR COMPRA
-  async function checkout(event) {
-    event.preventDefault();
-
-    if (!cart.length) {
-      return toast("Tu carrito está vacío.");
-    }
-
-    if (!db) {
-      return alert("ERROR: No se pudo conectar con Supabase.");
-    }
-
-    const form = new FormData(event.target);
-
-    const customer = String(
-      form.get("customer") || ""
-    ).trim();
-
-    const message = String(
-      form.get("message") || ""
-    ).trim();
-
-    if (!customer) {
-      return toast("Escribí tu nombre completo.");
-    }
-
-    const number = String(
-      cfg.WHATSAPP_NUMBER || ""
-    ).replace(/\D/g, "");
-
-    if (!number) {
-      return toast("Falta configurar el WhatsApp.");
-    }
-
-    const items = cart.map(item => ({
-      id: item.id,
-      name: item.name,
-      size: item.size,
-      price: item.price,
-      quantity: item.qty
-    }));
-
-    const total = cart.reduce(
-      (sum, item) => sum + item.price * item.qty,
-      0
-    );
-
-    const order = {
-      customer_name: customer,
-      phone: "",
-      address: "",
-      notes: message,
-      items,
-      total,
-      status: "Nuevo"
-    };
-
-    const button = event.target.querySelector(
-      'button[type="submit"]'
-    );
-
-    button.disabled = true;
-    button.textContent = "REGISTRANDO PEDIDO...";
-
-    try {
-      const { error } = await db
-        .from("orders")
-        .insert([order]);
-
-      if (error) {
-        console.error("ERROR COMPLETO DE SUPABASE:", error);
-
-        alert(
-          "ERROR AL REGISTRAR PEDIDO:\n\n" +
-          "Mensaje: " + (error.message || "Sin mensaje") +
-          "\n\nDetalles: " + (error.details || "Sin detalles") +
-          "\n\nCódigo: " + (error.code || "Sin código") +
-          "\n\nSugerencia: " + (error.hint || "Sin sugerencia")
-        );
-
-        return;
-      }
-
-      const lines = items.map(item =>
-        `• ${item.name} (${item.size}) x${item.quantity} — ${money(item.price * item.quantity)}`
-      ).join("\n");
-
-      const whatsappMessage =
-        `Hola, quiero realizar este pedido en ${cfg.STORE_NAME || "RV Parfums"}:\n\n` +
-        `${lines}\n\n` +
-        `Total: ${money(total)}\n` +
-        `Nombre: ${customer}\n` +
-        `Mensaje: ${message || "Sin mensaje adicional"}`;
-
-      const whatsappUrl =
-        `https://wa.me/${number}?text=${encodeURIComponent(whatsappMessage)}`;
-
-      cart = [];
-      renderCart();
-      event.target.reset();
-      toggleCart(false);
-
-      window.location.assign(whatsappUrl);
-
-    } catch (error) {
-      console.error("ERROR GENERAL:", error);
-
-      alert(
-        "ERROR GENERAL:\n\n" +
-        (error.message || String(error))
-      );
-
-    } finally {
-      button.disabled = false;
-      button.textContent = "FINALIZAR POR WHATSAPP ↗";
-    }
-  }
-
-  // INICIAR TIENDA
-  document.addEventListener("DOMContentLoaded", () => {
-    $("#year").textContent = new Date().getFullYear();
-
-    $("#search").addEventListener("input", renderProducts);
-    $("#category-filter").addEventListener("change", renderProducts);
-
-    $("#open-cart").onclick = () => toggleCart(true);
-    $("#close-cart").onclick = () => toggleCart(false);
-    $("#cart-overlay").onclick = () => toggleCart(false);
-
-    $("#checkout-form").addEventListener("submit", checkout);
-
-    renderCart();
-    loadProducts();
+  return Number(product.price || 0);
+}
+
+function renderProducts() {
+  const grid = $("#product-grid");
+  if (!grid) return;
+
+  const search = ($("#search")?.value || "").toLowerCase().trim();
+  const category = $("#category-filter")?.value || "";
+
+  const filtered = products.filter((product) => {
+    const matchesSearch = [
+      product.name,
+      product.brand,
+      product.description
+    ].join(" ").toLowerCase().includes(search);
+
+    const matchesCategory =
+      !category || product.category === category;
+
+    return matchesSearch && matchesCategory;
   });
 
-})();
+  if (!filtered.length) {
+    grid.innerHTML = "<p>No se encontraron productos.</p>";
+    return;
+  }
+
+  grid.innerHTML = filtered.map((product) => {
+    const isMl = product.sale_type === "ml";
+    const price = getProductPrice(product);
+    const stock = Number(product.stock || 0);
+
+    const priceText = isMl
+      ? `Desde ${money(price)}`
+      : money(price);
+
+    const image = product.image_url ||
+      "https://placehold.co/600x600?text=RV+Parfums";
+
+    return `
+      <article
+        class="product-card"
+        data-open-product="${product.id}"
+        role="button"
+        tabindex="0"
+        aria-label="Ver ${escapeHTML(product.name)}"
+      >
+        <div class="product-card-image">
+          <img
+            src="${escapeHTML(image)}"
+            alt="${escapeHTML(product.name)}"
+            loading="lazy"
+          >
+          ${stock <= 0
+            ? '<span class="stock-badge">Agotado</span>'
+            : ""}
+        </div>
+
+        <div class="product-card-info">
+          <p class="product-brand">${escapeHTML(product.brand || "RV PARFUMS")}</p>
+          <h3>${escapeHTML(product.name)}</h3>
+          <p class="product-description">
+            ${escapeHTML(product.description || "")}
+          </p>
+          <strong class="product-price">${priceText}</strong>
+          <span class="product-view-link">Ver producto →</span>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function updateCategories() {
+  const select = $("#category-filter");
+  if (!select) return;
+
+  const currentValue = select.value;
+  const categories = [...new Set(
+    products.map((product) => product.category).filter(Boolean)
+  )];
+
+  select.innerHTML =
+    '<option value="">Todas las categorías</option>' +
+    categories.map((category) =>
+      `<option value="${escapeHTML(category)}">${escapeHTML(category)}</option>`
+    ).join("");
+
+  if (categories.includes(currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+// ------------------------------
+// VENTANA DE DETALLES
+// ------------------------------
+
+function openProduct(id) {
+  currentProduct = products.find(
+    (product) => String(product.id) === String(id)
+  );
+
+  if (!currentProduct) return;
+
+  selectedSize = null;
+  modalQuantity = 1;
+
+  $("#modal-product-image").src =
+    currentProduct.image_url ||
+    "https://placehold.co/600x600?text=RV+Parfums";
+
+  $("#modal-product-image").alt = currentProduct.name || "";
+  $("#modal-product-brand").textContent =
+    currentProduct.brand || "RV PARFUMS";
+
+  $("#modal-product-name").textContent = currentProduct.name || "";
+  $("#modal-product-description").textContent =
+    currentProduct.description || "";
+
+  $("#modal-qty").textContent = modalQuantity;
+  $("#modal-product-message").textContent = "";
+
+  renderModalOptions();
+  updateModalPrice();
+
+  const overlay = $("#product-overlay");
+  const modal = $("#product-modal");
+
+  overlay?.classList.add("show");
+  modal?.classList.add("open");
+
+  overlay?.setAttribute("aria-hidden", "false");
+  modal?.setAttribute("aria-hidden", "false");
+
+  document.body.classList.add("modal-open");
+}
+
+function renderModalOptions() {
+  const container = $("#modal-purchase-options");
+  if (!container || !currentProduct) return;
+
+  if (currentProduct.sale_type !== "ml") {
+    selectedSize = null;
+    container.innerHTML = "";
+    return;
+  }
+
+  const price5 = Number(
+    currentProduct.price_5ml || currentProduct.price || 0
+  );
+  const price10 = Number(currentProduct.price_10ml || 0);
+
+  const options = [];
+
+  if (price5 > 0) {
+    options.push(`
+      <button
+        type="button"
+        class="modal-size-option selected"
+        data-modal-size="5"
+      >
+        <span>5 ml</span>
+        <strong>${money(price5)}</strong>
+      </button>
+    `);
+  }
+
+  if (price10 > 0) {
+    options.push(`
+      <button
+        type="button"
+        class="modal-size-option"
+        data-modal-size="10"
+      >
+        <span>10 ml</span>
+        <strong>${money(price10)}</strong>
+      </button>
+    `);
+  }
+
+  container.innerHTML = `
+    <p class="modal-options-title">ELEGÍ TU PRESENTACIÓN</p>
+    <div class="modal-size-options">
+      ${options.join("")}
+    </div>
+  `;
+
+  selectedSize = price5 > 0 ? "5 ml" : (price10 > 0 ? "10 ml" : null);
+}
+
+function getModalPrice() {
+  if (!currentProduct) return 0;
+
+  if (currentProduct.sale_type !== "ml") {
+    return Number(currentProduct.price || 0);
+  }
+
+  if (selectedSize === "10 ml") {
+    return Number(currentProduct.price_10ml || 0);
+  }
+
+  return Number(
+    currentProduct.price_5ml || currentProduct.price || 0
+  );
+}
+
+function updateModalPrice() {
+  if (!currentProduct) return;
+
+  $("#modal-product-price").textContent = money(getModalPrice());
+  $("#modal-qty").textContent = modalQuantity;
+
+  const addButton = $("#modal-add-to-cart");
+  const stock = Number(currentProduct.stock || 0);
+
+  if (addButton) {
+    addButton.disabled = stock <= 0 || getModalPrice() <= 0;
+  }
+
+  const message = $("#modal-product-message");
+  if (message) {
+    message.textContent = stock <= 0
+      ? "Este producto está agotado."
+      : "";
+  }
+}
+
+function closeProductModal() {
+  $("#product-overlay")?.classList.remove("show");
+  $("#product-modal")?.classList.remove("open");
+
+  $("#product-overlay")?.setAttribute("aria-hidden", "true");
+  $("#product-modal")?.setAttribute("aria-hidden", "true");
+
+  document.body.classList.remove("modal-open");
+  currentProduct = null;
+}
+
+// ------------------------------
+// EVENTOS DE LA VENTANA
+// ------------------------------
+
+$("#product-grid")?.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-open-product]");
+  if (card) openProduct(card.dataset.openProduct);
+});
+
+$("#product-grid")?.addEventListener("keydown", (event) => {
+  if (
+    (event.key === "Enter" || event.key === " ") &&
+    event.target.matches("[data-open-product]")
+  ) {
+    event.preventDefault();
+    openProduct(event.target.dataset.openProduct);
+  }
+});
+
+$("#modal-purchase-options")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-modal-size]");
+  if (!button) return;
+
+  selectedSize = `${button.dataset.modalSize} ml`;
+
+  document.querySelectorAll(".modal-size-option").forEach((option) => {
+    option.classList.toggle("selected", option === button);
+  });
+
+  updateModalPrice();
+});
+
+$("#modal-qty-minus")?.addEventListener("click", () => {
+  modalQuantity = Math.max(1, modalQuantity - 1);
+  updateModalPrice();
+});
+
+$("#modal-qty-plus")?.addEventListener("click", () => {
+  if (!currentProduct) return;
+
+  const stock = Number(currentProduct.stock || 0);
+
+  if (modalQuantity < stock) {
+    modalQuantity++;
+    updateModalPrice();
+  }
+});
+
+$("#modal-add-to-cart")?.addEventListener("click", () => {
+  if (!currentProduct) return;
+
+  addCurrentProductToCart();
+});
+
+$("#close-product-modal")?.addEventListener(
+  "click",
+  closeProductModal
+);
+
+$("#product-overlay")?.addEventListener(
+  "click",
+  closeProductModal
+);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeProductModal();
+  }
+});
+
+// ------------------------------
+// CARRITO
+// ------------------------------
+
+function addCurrentProductToCart() {
+  const product = currentProduct;
+  if (!product) return;
+
+  const price = getModalPrice();
+  const stock = Number(product.stock || 0);
+
+  if (price <= 0 || stock <= 0) {
+    showToast("Este producto no está disponible.");
+    return;
+  }
+
+  const key = `${product.id}-${selectedSize || "unit"}`;
+
+  const existing = cart.find((item) => item.key === key);
+  const currentQty = existing ? existing.qty : 0;
+
+  if (currentQty + modalQuantity > stock) {
+    showToast("No hay suficiente stock disponible.");
+    return;
+  }
+
+  if (existing) {
+    existing.qty += modalQuantity;
+  } else {
+    cart.push({
+      key,
+      id: product.id,
+      name: product.name,
+      size: selectedSize,
+      price,
+      qty: modalQuantity,
+      stock
+    });
+  }
+
+  renderCart();
+  closeProductModal();
+  showToast("Producto agregado al carrito.");
+}
+
+function renderCart() {
+  const container = $("#cart-items");
+  if (!container) return;
+
+  if (!cart.length) {
+    container.innerHTML = "<p>Tu carrito está vacío.</p>";
+  } else {
+    container.innerHTML = cart.map((item) => `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <strong>${escapeHTML(item.name)}</strong>
+          ${item.size
+            ? `<span>${escapeHTML(item.size)}</span>`
+            : ""}
+          <span>${money(item.price)} c/u</span>
+          <strong>${money(item.price * item.qty)}</strong>
+        </div>
+
+        <div class="qty">
+          <button
+            type="button"
+            data-cart-minus="${escapeHTML(item.key)}"
+            aria-label="Disminuir cantidad"
+          >−</button>
+
+          <span>${item.qty}</span>
+
+          <button
+            type="button"
+            data-cart-plus="${escapeHTML(item.key)}"
+            aria-label="Aumentar cantidad"
+          >+</button>
+        </div>
+
+        <button
+          type="button"
+          class="cart-remove"
+          data-cart-remove="${escapeHTML(item.key)}"
+        >Eliminar</button>
+      </div>
+    `).join("");
+  }
+
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.qty,
+    0
+  );
+
+  if ($("#cart-total")) {
+    $("#cart-total").textContent = money(total);
+  }
+
+  if ($("#cart-count")) {
+    $("#cart-count").textContent = cart.reduce(
+      (sum, item) => sum + item.qty,
+      0
+    );
+  }
+}
+
+$("#cart-items")?.addEventListener("click", (event) => {
+  const minus = event.target.closest("[data-cart-minus]");
+  const plus = event.target.closest("[data-cart-plus]");
+  const remove = event.target.closest("[data-cart-remove]");
+
+  if (minus) {
+    const item = cart.find((entry) => entry.key === minus.dataset.cartMinus);
+    if (item) {
+      item.qty--;
+      if (item.qty <= 0) {
+        cart = cart.filter((entry) => entry.key !== item.key);
+      }
+    }
+  }
+
+  if (plus) {
+    const item = cart.find((entry) => entry.key === plus.dataset.cartPlus);
+    if (item && item.qty < item.stock) {
+      item.qty++;
+    } else if (item) {
+      showToast("No hay más unidades disponibles.");
+    }
+  }
+
+  if (remove) {
+    cart = cart.filter(
+      (entry) => entry.key !== remove.dataset.cartRemove
+    );
+  }
+
+  renderCart();
+});
+
+// ------------------------------
+// ABRIR Y CERRAR CARRITO
+// ------------------------------
+
+function openCart() {
+  $("#cart-panel")?.classList.add("open");
+  $("#cart-overlay")?.classList.add("show");
+}
+
+function closeCart() {
+  $("#cart-panel")?.classList.remove("open");
+  $("#cart-overlay")?.classList.remove("show");
+}
+
+$("#open-cart")?.addEventListener("click", openCart);
+$("#close-cart")?.addEventListener("click", closeCart);
+$("#cart-overlay")?.addEventListener("click", closeCart);
+
+// ------------------------------
+// BUSCADOR Y FILTROS
+// ------------------------------
+
+$("#search")?.addEventListener("input", renderProducts);
+$("#category-filter")?.addEventListener("change", renderProducts);
+
+// ------------------------------
+// FINALIZAR COMPRA
+// ------------------------------
+
+$("#checkout-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!cart.length) {
+    showToast("Tu carrito está vacío.");
+    return;
+  }
+
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+
+  const customerName =
+    formData.get("customer_name") ||
+    formData.get("name") ||
+    "";
+
+  const phone = formData.get("phone") || "";
+  const address = formData.get("address") || "";
+  const notes = formData.get("notes") || "";
+
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.qty,
+    0
+  );
+
+  const orderItems = cart.map((item) => ({
+    id: item.id,
+    name: item.name,
+    size: item.size,
+    price: item.price,
+    quantity: item.qty
+  }));
+
+  const order = {
+    customer_name: customerName,
+    phone,
+    address,
+    notes,
+    items: orderItems,
+    total,
+    status: "Pendiente"
+  };
+
+  const submitButton = form.querySelector('[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "PROCESANDO...";
+  }
+
+  const { error } = await supabaseClient
+    .from("orders")
+    .insert([order]);
+
+  if (error) {
+    console.error("Error guardando pedido:", error);
+    showToast("No se pudo registrar el pedido. Intentá nuevamente.");
+
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "FINALIZAR COMPRA";
+    }
+
+    return;
+  }
+
+  let message = `Hola, quiero realizar un pedido en RV Parfums.\n\n`;
+  message += `Cliente: ${customerName}\n`;
+  message += `Teléfono: ${phone}\n`;
+  message += `Dirección: ${address}\n\n`;
+  message += `PRODUCTOS:\n`;
+
+  cart.forEach((item) => {
+    message += `- ${item.name}`;
+    if (item.size) message += ` (${item.size})`;
+    message += ` x${item.qty} = ${money(item.price * item.qty)}\n`;
+  });
+
+  message += `\nTOTAL: ${money(total)}`;
+
+  if (notes) {
+    message += `\n\nObservaciones: ${notes}`;
+  }
+
+  const whatsappURL =
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
+  cart = [];
+  renderCart();
+  form.reset();
+  closeCart();
+
+  if (submitButton) {
+    submitButton.disabled = false;
+    submitButton.textContent = "FINALIZAR COMPRA";
+  }
+
+  window.location.href = whatsappURL;
+});
+
+// ------------------------------
+// INICIO
+// ------------------------------
+
+if ($("#year")) {
+  $("#year").textContent = new Date().getFullYear();
+}
+
+renderCart();
+loadProducts();
+              
