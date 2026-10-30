@@ -1,24 +1,41 @@
+
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0b0b">
-  <meta name="description" content="Perfumería: descubrí fragancias seleccionadas.">
-  <title>NOIR — Perfumería</title>
+  <meta name="description" content="RV Parfums: descubrí fragancias seleccionadas.">
+  <title>RV Parfums — Perfumería</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script defer src="store.js"></script>
 </head>
+
 <body>
   <header class="site-header">
-    <a class="brand" href="#"><span class="brand-mark">N</span><span><b>NOIR</b><small>PERFUMERÍA</small></span></a>
-    <nav><a href="#catalogo">Catálogo</a><a href="#nosotros">Nosotros</a></nav>
-    <button class="cart-trigger" id="open-cart" aria-label="Abrir carrito">Bolsa <span id="cart-count">0</span></button>
+    <a class="brand" href="#">
+      <span class="brand-mark">RV</span>
+      <span>
+        <b>RV PARFUMS</b>
+        <small>PERFUMERÍA</small>
+      </span>
+    </a>
+
+    <nav>
+      <a href="#catalogo">Catálogo</a>
+      <a href="#nosotros">Nosotros</a>
+    </nav>
+
+    <button class="cart-trigger" id="open-cart" aria-label="Abrir carrito">
+      Bolsa <span id="cart-count">0</span>
+    </button>
   </header>
 
   <main>
@@ -27,26 +44,42 @@
         <p class="eyebrow">FRAGANCIAS QUE DEJAN HUELLA</p>
         <h1>Tu esencia.<br><em>Tu presencia.</em></h1>
         <p class="hero-lead">Descubrí fragancias seleccionadas para acompañar cada momento.</p>
-        <a class="button button-gold" href="#catalogo">EXPLORAR FRAGANCIAS <span>↗</span></a>
+        <a class="button button-gold" href="#catalogo">
+          EXPLORAR FRAGANCIAS <span>↗</span>
+        </a>
       </div>
+
       <div class="hero-art">
         <div class="hero-orbit"></div>
         <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1000&q=85" alt="Frasco de perfume de lujo">
         <span class="hero-caption">EAU DE PARFUM · SELECCIÓN EXCLUSIVA</span>
       </div>
-      <div class="hero-bottom"><span>01 — SELECCIÓN</span><span>CALIDAD · ESTILO · IDENTIDAD</span></div>
+
+      <div class="hero-bottom">
+        <span>01 — SELECCIÓN</span>
+        <span>CALIDAD · ESTILO · IDENTIDAD</span>
+      </div>
     </section>
 
     <section class="catalog-section" id="catalogo">
       <div class="section-heading">
-        <div><p class="eyebrow">NUESTRA COLECCIÓN</p><h2>Encontrá tu <em>fragancia</em></h2></div>
+        <div>
+          <p class="eyebrow">NUESTRA COLECCIÓN</p>
+          <h2>Encontrá tu <em>fragancia</em></h2>
+        </div>
         <p class="muted">Una selección para cada personalidad.</p>
       </div>
+
       <div class="catalog-tools">
         <input id="search" type="search" placeholder="Buscar perfume o marca…" aria-label="Buscar productos">
-        <select id="category-filter" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option></select>
+        <select id="category-filter" aria-label="Filtrar por categoría">
+          <option value="">Todas las categorías</option>
+        </select>
       </div>
-      <div id="product-grid" class="product-grid"><div class="loading">Cargando colección…</div></div>
+
+      <div id="product-grid" class="product-grid">
+        <div class="loading">Cargando colección…</div>
+      </div>
     </section>
 
     <section class="manifesto" id="nosotros">
@@ -56,22 +89,53 @@
     </section>
   </main>
 
-  <footer class="footer"><a class="brand" href="#"><span class="brand-mark">N</span><span><b>NOIR</b><small>PERFUMERÍA</small></span></a><span>© <span id="year"></span> · Todos los derechos reservados</span><a href="admin.html">Administración</a></footer>
+  <footer class="footer">
+    <a class="brand" href="#">
+      <span class="brand-mark">RV</span>
+      <span>
+        <b>RV PARFUMS</b>
+        <small>PERFUMERÍA</small>
+      </span>
+    </a>
+
+    <span>© <span id="year"></span> · Todos los derechos reservados</span>
+    <a href="admin.html">Administración</a>
+  </footer>
 
   <div class="overlay" id="cart-overlay"></div>
+
   <aside class="cart-panel" id="cart-panel" aria-label="Carrito de compras">
-    <div class="cart-head"><div><p class="eyebrow">TU SELECCIÓN</p><h3>Mi bolsa</h3></div><button class="icon-button" id="close-cart" aria-label="Cerrar">✕</button></div>
-    <div id="cart-items" class="cart-items"><p class="muted">Tu bolsa está vacía.</p></div>
-    <div class="cart-total"><span>Total</span><strong id="cart-total">Gs. 0</strong></div>
+    <div class="cart-head">
+      <div>
+        <p class="eyebrow">TU SELECCIÓN</p>
+        <h3>Mi bolsa</h3>
+      </div>
+      <button class="icon-button" id="close-cart" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div id="cart-items" class="cart-items">
+      <p class="muted">Tu bolsa está vacía.</p>
+    </div>
+
+    <div class="cart-total">
+      <span>Total</span>
+      <strong id="cart-total">Gs. 0</strong>
+    </div>
+
     <form id="checkout-form" class="checkout-form">
       <input name="customer" placeholder="Tu nombre" required>
       <input name="phone" placeholder="Tu teléfono" required>
       <textarea name="address" placeholder="Dirección o zona de entrega"></textarea>
       <textarea name="notes" placeholder="Indicaciones (opcional)"></textarea>
-      <button class="button button-gold full" type="submit">FINALIZAR POR WHATSAPP ↗</button>
+
+      <button class="button button-gold full" type="submit">
+        FINALIZAR POR WHATSAPP ↗
+      </button>
+
       <small class="muted">El pedido se registra y luego se abre WhatsApp para coordinar.</small>
     </form>
   </aside>
+
   <div class="toast" id="toast"></div>
 </body>
 </html>
