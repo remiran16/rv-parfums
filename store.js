@@ -4,8 +4,7 @@
 
   const ready =
     cfg.SUPABASE_URL?.startsWith("https://") &&
-    cfg.SUPABASE_ANON_KEY &&
-    !cfg.SUPABASE_ANON_KEY.includes("PEGAR_AQUI");
+    cfg.SUPABASE_ANON_KEY;
 
   const db = ready
     ? window.supabase.createClient(
@@ -33,9 +32,7 @@
     element.textContent = message;
     element.classList.add("show");
 
-    setTimeout(() => {
-      element.classList.remove("show");
-    }, 3000);
+    setTimeout(() => element.classList.remove("show"), 3000);
   }
 
   function escapeHtml(value = "") {
@@ -48,18 +45,12 @@
     })[character]);
   }
 
-  function placeholder(product) {
-    return product.image_url ||
-      "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80";
-  }
-
   // CARGAR PRODUCTOS
   async function loadProducts() {
     const grid = $("#product-grid");
 
     if (!db) {
-      grid.innerHTML =
-        '<div class="notice">Falta configurar Supabase.</div>';
+      grid.innerHTML = '<div class="notice">Error de configuración.</div>';
       return;
     }
 
@@ -71,8 +62,7 @@
 
     if (error) {
       console.error("Error cargando productos:", error);
-      grid.innerHTML =
-        '<div class="notice">No se pudo cargar el catálogo.</div>';
+      grid.innerHTML = '<div class="notice">No se pudo cargar el catálogo.</div>';
       return;
     }
 
@@ -81,12 +71,12 @@
     renderProducts();
 
     const categories = [
-      ...new Set(products.map((product) => product.category).filter(Boolean))
+      ...new Set(products.map(p => p.category).filter(Boolean))
     ].sort();
 
     $("#category-filter").innerHTML =
       '<option value="">Todas las categorías</option>' +
-      categories.map((category) =>
+      categories.map(category =>
         `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`
       ).join("");
   }
@@ -97,7 +87,7 @@
     const search = ($("#search").value || "").toLowerCase();
     const category = $("#category-filter").value;
 
-    const found = products.filter((product) => {
+    const found = products.filter(product => {
       const text =
         `${product.name} ${product.brand || ""} ${product.description || ""}`
           .toLowerCase();
@@ -107,17 +97,15 @@
     });
 
     grid.innerHTML = found.length
-      ? found.map((product) => `
+      ? found.map(product => `
         <article class="product-card">
           <div class="product-image">
             <img
-              src="${escapeHtml(placeholder(product))}"
+              src="${escapeHtml(product.image_url || "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80")}"
               alt="${escapeHtml(product.name)}"
               loading="lazy"
             >
-            ${product.stock <= 0
-              ? '<span class="sold-out">AGOTADO</span>'
-              : ""}
+            ${product.stock <= 0 ? '<span class="sold-out">AGOTADO</span>' : ""}
           </div>
 
           <div class="product-info">
@@ -145,22 +133,20 @@
           </div>
         </article>
       `).join("")
-      : '<div class="notice">No encontramos productos con esa búsqueda.</div>';
+      : '<div class="notice">No encontramos productos.</div>';
 
-    grid.querySelectorAll("[data-add]").forEach((button) => {
-      button.addEventListener("click", () => {
-        addToCart(button.dataset.add);
-      });
+    grid.querySelectorAll("[data-add]").forEach(button => {
+      button.addEventListener("click", () => addToCart(button.dataset.add));
     });
   }
 
   // AGREGAR AL CARRITO
   function addToCart(id) {
-    const product = products.find((item) => String(item.id) === String(id));
+    const product = products.find(p => String(p.id) === String(id));
 
     if (!product) return;
 
-    const item = cart.find((element) => String(element.id) === String(id));
+    const item = cart.find(p => String(p.id) === String(id));
 
     if (item) {
       if (item.qty >= product.stock) {
@@ -184,7 +170,7 @@
 
   // MOSTRAR CARRITO
   function renderCart() {
-    const count = cart.reduce((total, item) => total + item.qty, 0);
+    const count = cart.reduce((sum, item) => sum + item.qty, 0);
 
     const total = cart.reduce(
       (sum, item) => sum + item.price * item.qty,
@@ -195,7 +181,7 @@
     $("#cart-total").textContent = money(total);
 
     $("#cart-items").innerHTML = cart.length
-      ? cart.map((item) => `
+      ? cart.map(item => `
         <div class="cart-line">
           <div>
             <b>${escapeHtml(item.name)}</b>
@@ -213,20 +199,18 @@
       `).join("")
       : '<p class="muted">Tu carrito está vacío.</p>';
 
-    $("#cart-items").querySelectorAll("[data-minus]").forEach((button) => {
+    $("#cart-items").querySelectorAll("[data-minus]").forEach(button => {
       button.onclick = () => changeQty(button.dataset.minus, -1);
     });
 
-    $("#cart-items").querySelectorAll("[data-plus]").forEach((button) => {
+    $("#cart-items").querySelectorAll("[data-plus]").forEach(button => {
       button.onclick = () => changeQty(button.dataset.plus, 1);
     });
   }
 
   // MODIFICAR CANTIDAD
   function changeQty(id, difference) {
-    const item = cart.find(
-      (element) => String(element.id) === String(id)
-    );
+    const item = cart.find(p => String(p.id) === String(id));
 
     if (!item) return;
 
@@ -237,9 +221,7 @@
     item.qty += difference;
 
     if (item.qty <= 0) {
-      cart = cart.filter(
-        (element) => String(element.id) !== String(id)
-      );
+      cart = cart.filter(p => String(p.id) !== String(id));
     }
 
     renderCart();
@@ -272,7 +254,13 @@
       return toast("Escribí tu nombre completo.");
     }
 
-    const items = cart.map((item) => ({
+    const number = String(cfg.WHATSAPP_NUMBER || "").replace(/\D/g, "");
+
+    if (!number) {
+      return toast("Falta configurar el WhatsApp de la tienda.");
+    }
+
+    const items = cart.map(item => ({
       id: item.id,
       name: item.name,
       price: item.price,
@@ -284,7 +272,6 @@
       0
     );
 
-    // El teléfono se envía vacío para cumplir con la tabla actual.
     const order = {
       customer_name: customer,
       phone: "",
@@ -295,39 +282,25 @@
       status: "Nuevo"
     };
 
-    const number = String(cfg.WHATSAPP_NUMBER || "").replace(/\D/g, "");
-
-    if (!number) {
-      return toast("Falta configurar el WhatsApp de la tienda.");
-    }
-
-    // Abrir una ventana durante el clic para evitar bloqueos de Android.
-    const whatsappWindow = window.open("about:blank", "_blank");
-
     const button = event.target.querySelector('button[type="submit"]');
 
     button.disabled = true;
     button.textContent = "REGISTRANDO PEDIDO...";
 
     try {
-      // REGISTRAR PEDIDO EN SUPABASE
+      // GUARDAR PEDIDO
       const { error } = await db
         .from("orders")
         .insert([order]);
 
       if (error) {
-        console.error("ERROR DE SUPABASE AL REGISTRAR:", error);
-
-        if (whatsappWindow) {
-          whatsappWindow.close();
-        }
-
+        console.error("ERROR SUPABASE:", error);
         toast("No se pudo registrar el pedido. Intentá nuevamente.");
         return;
       }
 
-      // PREPARAR MENSAJE DE WHATSAPP
-      const lines = items.map((item) =>
+      // PREPARAR MENSAJE
+      const lines = items.map(item =>
         `• ${item.name} x${item.quantity} — ${money(item.price * item.quantity)}`
       ).join("\n");
 
@@ -341,30 +314,18 @@
       const whatsappUrl =
         `https://wa.me/${number}?text=${encodeURIComponent(whatsappMessage)}`;
 
-      // ABRIR WHATSAPP
-      if (whatsappWindow) {
-        whatsappWindow.location.href = whatsappUrl;
-      } else {
-        window.location.href = whatsappUrl;
-      }
-
       // LIMPIAR CARRITO
       cart = [];
       renderCart();
 
       event.target.reset();
-
       toggleCart(false);
 
-      toast("¡Pedido registrado correctamente!");
+      // REDIRECCIÓN DIRECTA A WHATSAPP
+      window.location.href = whatsappUrl;
 
     } catch (error) {
-      console.error("ERROR AL REALIZAR EL PEDIDO:", error);
-
-      if (whatsappWindow) {
-        whatsappWindow.close();
-      }
-
+      console.error("ERROR AL FINALIZAR:", error);
       toast("Ocurrió un error. Intentá nuevamente.");
 
     } finally {
@@ -378,20 +339,17 @@
     $("#year").textContent = new Date().getFullYear();
 
     $("#search").addEventListener("input", renderProducts);
-
     $("#category-filter").addEventListener("change", renderProducts);
 
     $("#open-cart").onclick = () => toggleCart(true);
-
     $("#close-cart").onclick = () => toggleCart(false);
-
     $("#cart-overlay").onclick = () => toggleCart(false);
 
     $("#checkout-form").addEventListener("submit", checkout);
 
     renderCart();
-
     loadProducts();
   });
 
 })();
+      
