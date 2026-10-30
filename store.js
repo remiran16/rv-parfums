@@ -31,7 +31,6 @@
 
     element.textContent = message;
     element.classList.add("show");
-
     setTimeout(() => element.classList.remove("show"), 3000);
   }
 
@@ -43,6 +42,14 @@
       '"': "&quot;",
       "'": "&#39;"
     })[character]);
+  }
+
+  function getPrice(product, size) {
+    if (size === "5 ml") {
+      return Number(product.price_5ml || product.price || 0);
+    }
+
+    return Number(product.price_10ml || 0);
   }
 
   // CARGAR PRODUCTOS
@@ -99,64 +106,121 @@
     });
 
     grid.innerHTML = found.length
-      ? found.map(product => `
-        <article class="product-card">
-          <div class="product-image">
-            <img
-              src="${escapeHtml(product.image_url || "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80")}"
-              alt="${escapeHtml(product.name)}"
-              loading="lazy"
-            >
-            ${product.stock <= 0
-              ? '<span class="sold-out">AGOTADO</span>'
-              : ""}
-          </div>
+      ? found.map(product => {
+          const price5 = getPrice(product, "5 ml");
+          const price10 = getPrice(product, "10 ml");
+          const unavailable = Number(product.stock) <= 0;
 
-          <div class="product-info">
-            <p class="product-brand">
-              ${escapeHtml(product.brand || product.category || "FRAGANCIA")}
-            </p>
+          return `
+            <article class="product-card">
+              <div class="product-image">
+                <img
+                  src="${escapeHtml(product.image_url || "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80")}"
+                  alt="${escapeHtml(product.name)}"
+                  loading="lazy"
+                >
+                ${unavailable
+                  ? '<span class="sold-out">AGOTADO</span>'
+                  : ""}
+              </div>
 
-            <h3>${escapeHtml(product.name)}</h3>
+              <div class="product-info">
+                <p class="product-brand">
+                  ${escapeHtml(product.brand || product.category || "FRAGANCIA")}
+                </p>
 
-            <p class="product-desc">
-              ${escapeHtml(product.description || "Una fragancia para destacar.")}
-            </p>
+                <h3>${escapeHtml(product.name)}</h3>
 
-            <div class="product-bottom">
-              <strong>${money(product.price)}</strong>
+                <p class="product-desc">
+                  ${escapeHtml(product.description || "Una fragancia para destacar.")}
+                </p>
 
-              <button
-                class="add-button"
-                data-add="${escapeHtml(product.id)}"
-                ${product.stock <= 0 ? "disabled" : ""}
-              >
-                ${product.stock <= 0 ? "SIN STOCK" : "＋ AGREGAR"}
-              </button>
-            </div>
-          </div>
-        </article>
-      `).join("")
+                <label class="size-label" for="size-${escapeHtml(product.id)}">
+                  PRESENTACIÓN
+                </label>
+
+                <select
+                  class="size-select"
+                  id="size-${escapeHtml(product.id)}"
+                  data-size="${escapeHtml(product.id)}"
+                >
+                  <option value="5 ml">5 ml — ${money(price5)}</option>
+                  <option value="10 ml" ${price10 <= 0 ? "disabled" : ""}>
+                    10 ml — ${price10 > 0 ? money(price10) : "Precio no disponible"}
+                  </option>
+                </select>
+
+                <div class="product-bottom">
+                  <strong data-product-price="${escapeHtml(product.id)}">
+                    ${money(price5)}
+                  </strong>
+
+                  <button
+                    class="add-button"
+                    data-add="${escapeHtml(product.id)}"
+                    ${unavailable || price5 <= 0 ? "disabled" : ""}
+                  >
+                    ${unavailable ? "SIN STOCK" : "＋ AGREGAR"}
+                  </button>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join("")
       : '<div class="notice">No encontramos productos.</div>';
 
+    // CAMBIAR PRECIO SEGÚN PRESENTACIÓN
+    grid.querySelectorAll("[data-size]").forEach(select => {
+      select.addEventListener("change", () => {
+        const product = products.find(
+          p => String(p.id) === String(select.dataset.size)
+        );
+
+        if (!product) return;
+
+        const price = getPrice(product, select.value);
+        const priceElement = grid.querySelector(
+          `[data-product-price="${select.dataset.size}"]`
+        );
+        const addButton = grid.querySelector(
+          `[data-add="${select.dataset.size}"]`
+        );
+
+        priceElement.textContent = money(price);
+        addButton.disabled =
+          Number(product.stock) <= 0 || price <= 0;
+      });
+    });
+
+    // AGREGAR AL CARRITO
     grid.querySelectorAll("[data-add]").forEach(button => {
       button.addEventListener("click", () => {
-        addToCart(button.dataset.add);
+        const select = grid.querySelector(
+          `[data-size="${button.dataset.add}"]`
+        );
+
+        addToCart(button.dataset.add, select.value);
       });
     });
   }
 
   // AGREGAR AL CARRITO
-  function addToCart(id) {
+  function addToCart(id, size) {
     const product = products.find(
       p => String(p.id) === String(id)
     );
 
     if (!product) return;
 
-    const item = cart.find(
-      p => String(p.id) === String(id)
-    );
+    const price = getPrice(product, size);
+
+    if (price <= 0) {
+      return toast("Esta presentación todavía no tiene precio.");
+    }
+
+    const key = `${id}-${size}`;
+
+    const item = cart.find(p => p.key === key);
 
     if (item) {
       if (item.qty >= product.stock) {
@@ -166,9 +230,11 @@
       item.qty++;
     } else {
       cart.push({
+        key,
         id: product.id,
         name: product.name,
-        price: Number(product.price),
+        size,
+        price,
         qty: 1,
         stock: Number(product.stock)
       });
@@ -195,14 +261,14 @@
       ? cart.map(item => `
         <div class="cart-line">
           <div>
-            <b>${escapeHtml(item.name)}</b>
+            <b>${escapeHtml(item.name)} (${escapeHtml(item.size)})</b>
             <small>${money(item.price)} c/u</small>
           </div>
 
           <div class="qty">
-            <button type="button" data-minus="${escapeHtml(item.id)}">−</button>
+            <button type="button" data-minus="${escapeHtml(item.key)}">−</button>
             <span>${item.qty}</span>
-            <button type="button" data-plus="${escapeHtml(item.id)}">+</button>
+            <button type="button" data-plus="${escapeHtml(item.key)}">+</button>
           </div>
 
           <strong>${money(item.price * item.qty)}</strong>
@@ -220,10 +286,8 @@
   }
 
   // MODIFICAR CANTIDAD
-  function changeQty(id, difference) {
-    const item = cart.find(
-      p => String(p.id) === String(id)
-    );
+  function changeQty(key, difference) {
+    const item = cart.find(p => p.key === key);
 
     if (!item) return;
 
@@ -234,9 +298,7 @@
     item.qty += difference;
 
     if (item.qty <= 0) {
-      cart = cart.filter(
-        p => String(p.id) !== String(id)
-      );
+      cart = cart.filter(p => p.key !== key);
     }
 
     renderCart();
@@ -285,6 +347,7 @@
     const items = cart.map(item => ({
       id: item.id,
       name: item.name,
+      size: item.size,
       price: item.price,
       quantity: item.qty
     }));
@@ -299,8 +362,8 @@
       phone: "",
       address: "",
       notes: message,
-      items: items,
-      total: total,
+      items,
+      total,
       status: "Nuevo"
     };
 
@@ -312,7 +375,6 @@
     button.textContent = "REGISTRANDO PEDIDO...";
 
     try {
-      // REGISTRAR PEDIDO
       const { error } = await db
         .from("orders")
         .insert([order]);
@@ -331,9 +393,8 @@
         return;
       }
 
-      // PREPARAR WHATSAPP
       const lines = items.map(item =>
-        `• ${item.name} x${item.quantity} — ${money(item.price * item.quantity)}`
+        `• ${item.name} (${item.size}) x${item.quantity} — ${money(item.price * item.quantity)}`
       ).join("\n");
 
       const whatsappMessage =
@@ -346,13 +407,11 @@
       const whatsappUrl =
         `https://wa.me/${number}?text=${encodeURIComponent(whatsappMessage)}`;
 
-      // LIMPIAR CARRITO
       cart = [];
       renderCart();
       event.target.reset();
       toggleCart(false);
 
-      // ABRIR WHATSAPP
       window.location.assign(whatsappUrl);
 
     } catch (error) {
@@ -387,4 +446,3 @@
   });
 
 })();
-    
