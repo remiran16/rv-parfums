@@ -2,11 +2,11 @@
 (() => {
   const cfg = window.STORE_CONFIG || {};
 
-  const ready =
-    cfg.SUPABASE_URL?.startsWith("https://") &&
-    cfg.SUPABASE_ANON_KEY;
-
-  const db = ready
+  const db = (
+    cfg.SUPABASE_URL &&
+    cfg.SUPABASE_ANON_KEY &&
+    window.supabase
+  )
     ? window.supabase.createClient(
         cfg.SUPABASE_URL,
         cfg.SUPABASE_ANON_KEY
@@ -32,7 +32,9 @@
     element.textContent = message;
     element.classList.add("show");
 
-    setTimeout(() => element.classList.remove("show"), 3000);
+    setTimeout(() => {
+      element.classList.remove("show");
+    }, 3000);
   }
 
   function escapeHtml(value = "") {
@@ -50,7 +52,8 @@
     const grid = $("#product-grid");
 
     if (!db) {
-      grid.innerHTML = '<div class="notice">Error de configuración.</div>';
+      grid.innerHTML =
+        '<div class="notice">Error de conexión con la tienda.</div>';
       return;
     }
 
@@ -61,8 +64,9 @@
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error cargando productos:", error);
-      grid.innerHTML = '<div class="notice">No se pudo cargar el catálogo.</div>';
+      console.error("ERROR PRODUCTOS:", error);
+      grid.innerHTML =
+        '<div class="notice">No se pudo cargar el catálogo.</div>';
       return;
     }
 
@@ -105,7 +109,9 @@
               alt="${escapeHtml(product.name)}"
               loading="lazy"
             >
-            ${product.stock <= 0 ? '<span class="sold-out">AGOTADO</span>' : ""}
+            ${product.stock <= 0
+              ? '<span class="sold-out">AGOTADO</span>'
+              : ""}
           </div>
 
           <div class="product-info">
@@ -136,17 +142,23 @@
       : '<div class="notice">No encontramos productos.</div>';
 
     grid.querySelectorAll("[data-add]").forEach(button => {
-      button.addEventListener("click", () => addToCart(button.dataset.add));
+      button.addEventListener("click", () => {
+        addToCart(button.dataset.add);
+      });
     });
   }
 
   // AGREGAR AL CARRITO
   function addToCart(id) {
-    const product = products.find(p => String(p.id) === String(id));
+    const product = products.find(
+      p => String(p.id) === String(id)
+    );
 
     if (!product) return;
 
-    const item = cart.find(p => String(p.id) === String(id));
+    const item = cart.find(
+      p => String(p.id) === String(id)
+    );
 
     if (item) {
       if (item.qty >= product.stock) {
@@ -170,11 +182,12 @@
 
   // MOSTRAR CARRITO
   function renderCart() {
-    const count = cart.reduce((sum, item) => sum + item.qty, 0);
+    const count = cart.reduce(
+      (sum, item) => sum + item.qty, 0
+    );
 
     const total = cart.reduce(
-      (sum, item) => sum + item.price * item.qty,
-      0
+      (sum, item) => sum + item.price * item.qty, 0
     );
 
     $("#cart-count").textContent = count;
@@ -210,7 +223,9 @@
 
   // MODIFICAR CANTIDAD
   function changeQty(id, difference) {
-    const item = cart.find(p => String(p.id) === String(id));
+    const item = cart.find(
+      p => String(p.id) === String(id)
+    );
 
     if (!item) return;
 
@@ -221,7 +236,9 @@
     item.qty += difference;
 
     if (item.qty <= 0) {
-      cart = cart.filter(p => String(p.id) !== String(id));
+      cart = cart.filter(
+        p => String(p.id) !== String(id)
+      );
     }
 
     renderCart();
@@ -242,22 +259,31 @@
     }
 
     if (!db) {
-      return toast("No se pudo conectar con la tienda.");
+      return alert(
+        "ERROR: No se pudo conectar con Supabase. Revisá config.js."
+      );
     }
 
     const form = new FormData(event.target);
 
-    const customer = String(form.get("customer") || "").trim();
-    const message = String(form.get("message") || "").trim();
+    const customer = String(
+      form.get("customer") || ""
+    ).trim();
+
+    const message = String(
+      form.get("message") || ""
+    ).trim();
 
     if (!customer) {
       return toast("Escribí tu nombre completo.");
     }
 
-    const number = String(cfg.WHATSAPP_NUMBER || "").replace(/\D/g, "");
+    const number = String(
+      cfg.WHATSAPP_NUMBER || ""
+    ).replace(/\D/g, "");
 
     if (!number) {
-      return toast("Falta configurar el WhatsApp de la tienda.");
+      return toast("Falta configurar el WhatsApp.");
     }
 
     const items = cart.map(item => ({
@@ -282,24 +308,37 @@
       status: "Nuevo"
     };
 
-    const button = event.target.querySelector('button[type="submit"]');
+    const button = event.target.querySelector(
+      'button[type="submit"]'
+    );
 
     button.disabled = true;
     button.textContent = "REGISTRANDO PEDIDO...";
 
     try {
-      // GUARDAR PEDIDO
-      const { error } = await db
+      // REGISTRAR PEDIDO EN SUPABASE
+      const { data, error } = await db
         .from("orders")
-        .insert([order]);
+        .insert([order])
+        .select();
 
       if (error) {
-        console.error("ERROR SUPABASE:", error);
-        toast("No se pudo registrar el pedido. Intentá nuevamente.");
+        console.error("ERROR COMPLETO DE SUPABASE:", error);
+
+        alert(
+          "ERROR AL REGISTRAR PEDIDO:\n\n" +
+          "Mensaje: " + (error.message || "Sin mensaje") +
+          "\n\nDetalles: " + (error.details || "Sin detalles") +
+          "\n\nCódigo: " + (error.code || "Sin código") +
+          "\n\nSugerencia: " + (error.hint || "Sin sugerencia")
+        );
+
         return;
       }
 
-      // PREPARAR MENSAJE
+      console.log("PEDIDO REGISTRADO:", data);
+
+      // CONSTRUIR MENSAJE DE WHATSAPP
       const lines = items.map(item =>
         `• ${item.name} x${item.quantity} — ${money(item.price * item.quantity)}`
       ).join("\n");
@@ -317,16 +356,19 @@
       // LIMPIAR CARRITO
       cart = [];
       renderCart();
-
       event.target.reset();
       toggleCart(false);
 
-      // REDIRECCIÓN DIRECTA A WHATSAPP
-      window.location.href = whatsappUrl;
+      // REDIRECCIÓN A WHATSAPP
+      window.location.assign(whatsappUrl);
 
     } catch (error) {
-      console.error("ERROR AL FINALIZAR:", error);
-      toast("Ocurrió un error. Intentá nuevamente.");
+      console.error("ERROR GENERAL:", error);
+
+      alert(
+        "ERROR GENERAL:\n\n" +
+        (error.message || String(error))
+      );
 
     } finally {
       button.disabled = false;
@@ -352,4 +394,3 @@
   });
 
 })();
-      
