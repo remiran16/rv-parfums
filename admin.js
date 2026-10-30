@@ -60,7 +60,7 @@
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast("Error cargando inventario.");
+      toast("Error cargando inventario: " + error.message);
       return;
     }
 
@@ -72,10 +72,23 @@
     $("#inventory-body").innerHTML = rows.length
       ? rows.map(p => `
         <tr>
-          <td><b>${esc(p.name)}</b><small>${esc(p.brand || "")}</small></td>
-          <td>${money(p.price)}</td>
-          <td><input class="stock-input" type="number" min="0" value="${p.stock}" data-stock="${p.id}" aria-label="Stock"></td>
-          <td>${p.active ? '<span class="status active">Activo</span>' : '<span class="status">Oculto</span>'}</td>
+          <td>
+            <b>${esc(p.name)}</b>
+            <small>${esc(p.brand || "")}</small>
+          </td>
+          <td>
+            <small>5 ml: ${money(p.price_5ml)}</small>
+            <small>10 ml: ${money(p.price_10ml)}</small>
+          </td>
+          <td>
+            <input class="stock-input" type="number" min="0"
+              value="${Number(p.stock || 0)}"
+              data-stock="${p.id}" aria-label="Stock">
+          </td>
+          <td>${p.active
+            ? '<span class="status active">Activo</span>'
+            : '<span class="status">Oculto</span>'}
+          </td>
           <td>
             <button class="text-button" data-edit="${p.id}">Editar</button>
             <button class="text-button danger" data-delete="${p.id}">Borrar</button>
@@ -84,17 +97,17 @@
       `).join("")
       : '<tr><td colspan="5">Todavía no hay productos.</td></tr>';
 
-    $("#inventory-body").querySelectorAll("[data-edit]").forEach(b =>
-      b.onclick = () => editProduct(rows.find(p => p.id === b.dataset.edit))
-    );
+    $("#inventory-body").querySelectorAll("[data-edit]").forEach(b => {
+      b.onclick = () => editProduct(rows.find(p => String(p.id) === b.dataset.edit));
+    });
 
-    $("#inventory-body").querySelectorAll("[data-delete]").forEach(b =>
-      b.onclick = () => deleteProduct(b.dataset.delete)
-    );
+    $("#inventory-body").querySelectorAll("[data-delete]").forEach(b => {
+      b.onclick = () => deleteProduct(b.dataset.delete);
+    });
 
-    $("#inventory-body").querySelectorAll("[data-stock]").forEach(i =>
-      i.onchange = () => updateStock(i.dataset.stock, i.value)
-    );
+    $("#inventory-body").querySelectorAll("[data-stock]").forEach(i => {
+      i.onchange = () => updateStock(i.dataset.stock, i.value);
+    });
   }
 
   async function loadOrders() {
@@ -122,7 +135,7 @@
             <small>${esc(o.phone)}</small>
           </td>
           <td>${(o.items || []).map(i =>
-            `${esc(i.name)} ×${i.quantity}`
+            `${esc(i.name)}${i.size ? ` (${esc(i.size)})` : ""} ×${i.quantity}`
           ).join("<br>")}</td>
           <td>${money(o.total)}</td>
           <td><span class="status">${esc(o.status)}</span></td>
@@ -135,13 +148,10 @@
             </select>
           </td>
           <td>
-            <button
-              class="text-button danger"
+            <button class="text-button danger"
               data-delete-order="${o.id}"
               title="Eliminar pedido"
-              aria-label="Eliminar pedido">
-              🗑️
-            </button>
+              aria-label="Eliminar pedido">🗑️</button>
           </td>
         </tr>
       `).join("")
@@ -154,7 +164,8 @@
           .update({ status: s.value })
           .eq("id", s.dataset.status);
 
-        toast(error ? "No se pudo actualizar." : "Estado actualizado.");
+        toast(error ? "No se pudo actualizar: " + error.message : "Estado actualizado.");
+
         if (error) await loadOrders();
       };
     });
@@ -175,7 +186,7 @@
       .eq("id", id);
 
     if (error) {
-      toast("No se pudo eliminar el pedido: " + error.message);
+      toast("No se pudo eliminar: " + error.message);
       return;
     }
 
@@ -188,7 +199,10 @@
 
     const f = $("#product-form");
 
-    for (const k of ["id", "name", "brand", "category", "description", "price", "stock"]) {
+    for (const k of [
+      "id", "name", "brand", "category", "description",
+      "price_5ml", "price_10ml", "stock"
+    ]) {
       f.elements[k].value = p[k] ?? "";
     }
 
@@ -200,9 +214,12 @@
   async function deleteProduct(id) {
     if (!confirm("¿Seguro que querés borrar este producto?")) return;
 
-    const { error } = await db.from("products").delete().eq("id", id);
+    const { error } = await db
+      .from("products")
+      .delete()
+      .eq("id", id);
 
-    toast(error ? "No se pudo borrar." : "Producto eliminado.");
+    toast(error ? "No se pudo borrar: " + error.message : "Producto eliminado.");
     await loadInventory();
   }
 
@@ -226,6 +243,14 @@
     const id = d.id || null;
     let image_url = null;
 
+    const price5 = Number(d.price_5ml);
+    const price10 = Number(d.price_10ml);
+
+    if (price5 < 0 || price10 < 0) {
+      msg("#product-message", "Los precios no pueden ser negativos.");
+      return;
+    }
+
     const file = f.elements.image.files[0];
 
     if (file) {
@@ -244,7 +269,10 @@
         return msg("#product-message", "Error subiendo imagen: " + upErr.message);
       }
 
-      const { data } = db.storage.from("product-images").getPublicUrl(path);
+      const { data } = db.storage
+        .from("product-images")
+        .getPublicUrl(path);
+
       image_url = data.publicUrl;
     }
 
@@ -253,7 +281,9 @@
       brand: d.brand.trim(),
       category: d.category.trim(),
       description: d.description.trim(),
-      price: Number(d.price),
+      price: price5,
+      price_5ml: price5,
+      price_10ml: price10,
       stock: Number(d.stock),
       active: f.elements.active.checked
     };
@@ -270,6 +300,7 @@
     }
 
     msg("#product-message", "Producto guardado correctamente.");
+
     f.reset();
     f.elements.id.value = "";
     f.elements.active.checked = true;
