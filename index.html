@@ -34,7 +34,7 @@
     </nav>
 
     <button class="cart-trigger" id="open-cart" aria-label="Abrir carrito">
-      Bolsa <span id="cart-count">0</span>
+      Carrito <span id="cart-count">0</span>
     </button>
   </header>
 
@@ -108,13 +108,13 @@
     <div class="cart-head">
       <div>
         <p class="eyebrow">TU SELECCIÓN</p>
-        <h3>Mi bolsa</h3>
+        <h3>Mi carrito</h3>
       </div>
       <button class="icon-button" id="close-cart" aria-label="Cerrar">✕</button>
     </div>
 
     <div id="cart-items" class="cart-items">
-      <p class="muted">Tu bolsa está vacía.</p>
+      <p class="muted">Tu carrito está vacío.</p>
     </div>
 
     <div class="cart-total">
@@ -123,16 +123,27 @@
     </div>
 
     <form id="checkout-form" class="checkout-form">
-      <input name="customer" placeholder="Tu nombre" required>
-      <input name="phone" placeholder="Tu teléfono" required>
-      <textarea name="address" placeholder="Dirección o zona de entrega"></textarea>
-      <textarea name="notes" placeholder="Indicaciones (opcional)"></textarea>
+      <input
+        name="customer"
+        type="text"
+        placeholder="Nombre completo"
+        autocomplete="name"
+        required
+      >
+
+      <textarea
+        name="message"
+        placeholder="Mensaje adicional (opcional)"
+        rows="3"
+      ></textarea>
 
       <button class="button button-gold full" type="submit">
         FINALIZAR POR WHATSAPP ↗
       </button>
 
-      <small class="muted">El pedido se registra y luego se abre WhatsApp para coordinar.</small>
+      <small class="muted">
+        Completá tu nombre y enviá tu pedido por WhatsApp.
+      </small>
     </form>
   </aside>
 
