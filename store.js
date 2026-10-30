@@ -32,13 +32,11 @@
     element.textContent = message;
     element.classList.add("show");
 
-    setTimeout(() => {
-      element.classList.remove("show");
-    }, 3000);
+    setTimeout(() => element.classList.remove("show"), 3000);
   }
 
   function escapeHtml(value = "") {
-    return String(value).replace(/[&<>"']/g, (character) => ({
+    return String(value).replace(/[&<>"']/g, character => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
@@ -259,9 +257,7 @@
     }
 
     if (!db) {
-      return alert(
-        "ERROR: No se pudo conectar con Supabase. Revisá config.js."
-      );
+      return alert("ERROR: No se pudo conectar con Supabase.");
     }
 
     const form = new FormData(event.target);
@@ -316,11 +312,10 @@
     button.textContent = "REGISTRANDO PEDIDO...";
 
     try {
-      // REGISTRAR PEDIDO EN SUPABASE
-      const { data, error } = await db
+      // REGISTRAR PEDIDO
+      const { error } = await db
         .from("orders")
-        .insert([order])
-        .select();
+        .insert([order]);
 
       if (error) {
         console.error("ERROR COMPLETO DE SUPABASE:", error);
@@ -336,9 +331,7 @@
         return;
       }
 
-      console.log("PEDIDO REGISTRADO:", data);
-
-      // CONSTRUIR MENSAJE DE WHATSAPP
+      // PREPARAR WHATSAPP
       const lines = items.map(item =>
         `• ${item.name} x${item.quantity} — ${money(item.price * item.quantity)}`
       ).join("\n");
@@ -359,7 +352,7 @@
       event.target.reset();
       toggleCart(false);
 
-      // REDIRECCIÓN A WHATSAPP
+      // ABRIR WHATSAPP
       window.location.assign(whatsappUrl);
 
     } catch (error) {
@@ -394,3 +387,4 @@
   });
 
 })();
+    
