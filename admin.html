@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0b0b">
+
   <title>Administración — RV Parfums</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
@@ -19,171 +21,346 @@
 
 <body class="admin-body">
 
+  <!-- ENCABEZADO -->
   <header class="site-header">
     <a class="brand" href="index.html">
       <span class="brand-mark">RV</span>
-      <span><b>RV PARFUMS</b><small>ADMINISTRACIÓN</small></span>
+
+      <span>
+        <b>RV PARFUMS</b>
+        <small>ADMINISTRACIÓN</small>
+      </span>
     </a>
+
     <a href="index.html">← Ver tienda</a>
   </header>
 
   <main class="admin-wrap">
 
+    <!-- INICIO DE SESIÓN -->
     <section id="login-view" class="login-card">
+
       <p class="eyebrow">ÁREA PRIVADA</p>
+
       <h1>Panel de <em>control</em></h1>
-      <p class="muted">Ingresá con el correo y la contraseña de administrador.</p>
+
+      <p class="muted">
+        Ingresá con el correo y la contraseña de administrador.
+      </p>
 
       <form id="login-form">
-        <input type="email" name="email" placeholder="Correo electrónico" required>
-        <input type="password" name="password" placeholder="Contraseña" required>
-        <button class="button button-gold full" type="submit">INGRESAR</button>
+
+        <input
+          type="email"
+          name="email"
+          placeholder="Correo electrónico"
+          required
+        >
+
+        <input
+          type="password"
+          name="password"
+          placeholder="Contraseña"
+          required
+        >
+
+        <button class="button button-gold full" type="submit">
+          INGRESAR
+        </button>
+
       </form>
 
       <p class="form-message" id="login-message"></p>
+
     </section>
 
+    <!-- PANEL PRINCIPAL -->
     <section id="dashboard" hidden>
 
       <div class="admin-title">
+
         <div>
           <p class="eyebrow">GESTIÓN DE TU NEGOCIO</p>
           <h1>Panel de <em>control</em></h1>
         </div>
-        <button id="logout" class="button button-outline" type="button">Cerrar sesión</button>
+
+        <button id="logout" class="button button-outline" type="button">
+          Cerrar sesión
+        </button>
+
       </div>
 
+      <!-- ESTADÍSTICAS -->
       <div class="stats-grid">
+
         <div class="stat-card">
           <span>Productos activos</span>
           <strong id="stat-products">0</strong>
         </div>
+
         <div class="stat-card">
           <span>Unidades en stock</span>
           <strong id="stat-stock">0</strong>
         </div>
+
         <div class="stat-card">
           <span>Pedidos recibidos</span>
           <strong id="stat-orders">0</strong>
         </div>
+
       </div>
 
       <div class="admin-columns">
 
+        <!-- FORMULARIO DE PRODUCTOS -->
         <section class="admin-card">
+
           <div class="card-title">
+
             <h2 id="form-title">Agregar producto</h2>
+
             <span class="eyebrow">CATÁLOGO</span>
+
           </div>
 
           <form id="product-form">
+
             <input type="hidden" name="id">
 
-            <label>Nombre del producto
-              <input name="name" required placeholder="Ej. Erba Pura EDP">
+            <label>
+              Nombre del producto
+
+              <input
+                name="name"
+                required
+                placeholder="Ej. Erba Pura EDP"
+              >
             </label>
 
-            <label>Marca
-              <input name="brand" placeholder="Ej. Xerjoff">
+            <label>
+              Marca
+
+              <input
+                name="brand"
+                placeholder="Ej. Xerjoff"
+              >
             </label>
 
-            <label>Categoría
-              <input name="category" placeholder="Ej. Masculino, Femenino, Unisex">
+            <label>
+              Categoría
+
+              <input
+                name="category"
+                placeholder="Ej. Masculino, Femenino, Unisex"
+              >
             </label>
 
-            <label>Descripción
-              <textarea name="description" placeholder="Notas, presentación, detalles..."></textarea>
+            <label>
+              Descripción
+
+              <textarea
+                name="description"
+                placeholder="Notas, presentación, detalles..."
+              ></textarea>
             </label>
 
+            <!-- MODALIDAD DE VENTA -->
             <div class="sale-type-section">
-              <label>Modalidad de venta
+
+              <label>
+                Modalidad de venta
+
                 <select name="sale_type" id="sale-type" required>
-                  <option value="unit">Por unidad</option>
-                  <option value="ml">Por mililitros (5 ml / 10 ml)</option>
+
+                  <option value="unit">
+                    Por unidad
+                  </option>
+
+                  <option value="ml">
+                    Por mililitros (5 ml / 10 ml)
+                  </option>
+
                 </select>
               </label>
-              <p class="muted">Elegí cómo se comercializará este producto.</p>
+
+              <p class="muted">
+                Elegí cómo se comercializará este producto.
+              </p>
+
             </div>
 
+            <!-- PRECIO POR UNIDAD -->
             <div id="unit-price-field">
-              <label>Precio por unidad (Gs.)
-                <input name="price_unit" type="number" min="0" step="1" placeholder="Ej. 150000">
+
+              <label>
+                Precio por unidad (Gs.)
+
+                <input
+                  name="price_unit"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Ej. 150000"
+                >
               </label>
+
             </div>
 
+            <!-- PRECIOS POR MILILITROS -->
             <div id="ml-price-fields">
+
               <p><strong>Precios por presentación</strong></p>
+
               <div class="form-row">
-                <label>Precio 5 ml (Gs.)
-                  <input name="price_5ml" type="number" min="0" step="1" placeholder="Ej. 75000">
+
+                <label>
+                  Precio 5 ml (Gs.)
+
+                  <input
+                    name="price_5ml"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Ej. 75000"
+                  >
                 </label>
-                <label>Precio 10 ml (Gs.)
-                  <input name="price_10ml" type="number" min="0" step="1" placeholder="Ej. 130000">
+
+                <label>
+                  Precio 10 ml (Gs.)
+
+                  <input
+                    name="price_10ml"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Ej. 130000"
+                  >
                 </label>
+
               </div>
+
             </div>
 
-            <label>Stock
-              <input name="stock" type="number" min="0" step="1" required value="0">
+            <!-- STOCK -->
+            <label>
+              Stock
+
+              <input
+                name="stock"
+                type="number"
+                min="0"
+                step="1"
+                required
+                value="0"
+              >
             </label>
 
-            <label>Fotografía del producto
-              <input name="image" type="file" accept="image/*">
+            <!-- IMAGEN -->
+            <label>
+              Fotografía del producto
+
+              <input
+                name="image"
+                type="file"
+                accept="image/*"
+              >
             </label>
 
+            <!-- VISIBILIDAD -->
             <label class="check-label">
-              <input name="active" type="checkbox" checked>
+
+              <input
+                name="active"
+                type="checkbox"
+                checked
+              >
+
               Mostrar en la tienda
+
             </label>
 
+            <!-- BOTONES -->
             <div class="form-row">
-              <button class="button button-gold" type="submit">GUARDAR PRODUCTO</button>
-              <button class="button button-outline" id="reset-form" type="button">LIMPIAR</button>
+
+              <button
+                class="button button-gold"
+                type="submit"
+              >
+                GUARDAR PRODUCTO
+              </button>
+
+              <button
+                class="button button-outline"
+                id="reset-form"
+                type="button"
+              >
+                LIMPIAR
+              </button>
+
             </div>
 
             <p class="form-message" id="product-message"></p>
+
           </form>
+
         </section>
 
+        <!-- INVENTARIO -->
         <section class="admin-card">
+
           <div class="card-title">
-            <div>
-              <h2>Inventario</h2>
-              <p class="muted">Marcá «Mostrar en portada» para elegir tus destacados. Máximo 6.</p>
-            </div>
+
+            <h2>Inventario</h2>
+
             <span class="eyebrow">PRODUCTOS</span>
+
           </div>
 
           <div class="table-wrap">
+
             <table>
+
               <thead>
                 <tr>
                   <th>Producto</th>
                   <th>Precios</th>
                   <th>Stock</th>
                   <th>Estado</th>
-                  <th>Portada</th>
                   <th></th>
                 </tr>
               </thead>
+
               <tbody id="inventory-body">
-                <tr><td colspan="6">Cargando...</td></tr>
+
+                <tr>
+                  <td colspan="5">Cargando...</td>
+                </tr>
+
               </tbody>
+
             </table>
+
           </div>
-          <p class="form-message" id="featured-message"></p>
+
         </section>
 
       </div>
 
+      <!-- PEDIDOS -->
       <section class="admin-card orders-card">
+
         <div class="card-title">
+
           <h2>Pedidos</h2>
+
           <span class="eyebrow">ÚLTIMOS PEDIDOS</span>
+
         </div>
 
         <div class="table-wrap">
+
           <table>
+
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -195,16 +372,27 @@
                 <th></th>
               </tr>
             </thead>
+
             <tbody id="orders-body">
-              <tr><td colspan="7">Cargando...</td></tr>
+
+              <tr>
+                <td colspan="7">Cargando...</td>
+              </tr>
+
             </tbody>
+
           </table>
+
         </div>
+
       </section>
 
     </section>
+
   </main>
 
+  <!-- NOTIFICACIONES -->
   <div class="toast" id="toast"></div>
+
 </body>
 </html>
