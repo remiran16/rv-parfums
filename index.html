@@ -74,7 +74,6 @@
       </div>
 
       <div class="bestsellers-carousel">
-
         <div
           class="bestsellers-viewport"
           id="bestsellers-viewport"
@@ -83,19 +82,15 @@
             class="bestsellers-track"
             id="bestsellers-track"
           >
-
             <!-- Los seis espacios se cargan desde Supabase -->
-
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
-
           </div>
         </div>
-
       </div>
 
       <div
@@ -105,50 +100,39 @@
       ></div>
 
     </section>
-    <!-- FIN DE LOS MÁS VENDIDOS -->
 
     <!-- PRODUCTOS DESTACADOS: SECCIÓN OCULTA -->
     <section class="featured-section" id="destacados" hidden>
-
       <div class="featured-heading">
         <div>
           <p class="eyebrow">LA SELECCIÓN DE RV PARFUMS</p>
           <h2>Nuestras <em>destacadas</em></h2>
         </div>
-
         <span class="featured-note">SELECCIÓN EXCLUSIVA</span>
       </div>
 
       <div class="featured-carousel">
-
         <button class="featured-arrow" id="featured-prev" type="button" aria-label="Productos anteriores">‹</button>
-
         <div class="featured-viewport" id="featured-viewport">
           <div class="featured-track" id="featured-track"></div>
         </div>
-
         <button class="featured-arrow" id="featured-next" type="button" aria-label="Productos siguientes">›</button>
-
       </div>
 
       <div class="featured-dots" id="featured-dots"></div>
-
     </section>
 
     <!-- CATÁLOGO -->
     <section class="catalog-section" id="catalogo">
-
       <div class="section-heading">
         <div>
           <p class="eyebrow">NUESTRA COLECCIÓN</p>
           <h2>Encontrá tu <em>fragancia</em></h2>
         </div>
-
         <p class="muted">Una selección para cada personalidad.</p>
       </div>
 
       <div class="catalog-tools">
-
         <input
           id="search"
           type="search"
@@ -159,13 +143,11 @@
         <select id="category-filter" aria-label="Filtrar por categoría">
           <option value="">Todas las categorías</option>
         </select>
-
       </div>
 
       <div id="product-grid" class="product-grid">
         <div class="loading">Cargando colección…</div>
       </div>
-
     </section>
 
     <!-- FRASE FINAL -->
@@ -177,7 +159,6 @@
 
   <!-- PIE DE PÁGINA -->
   <footer class="footer">
-
     <a class="brand" href="#">
       <span class="brand-mark">RV</span>
       <span>
@@ -191,7 +172,6 @@
     </span>
 
     <a href="admin.html">Administración</a>
-
   </footer>
 
   <!-- MODAL DE PRODUCTOS -->
@@ -205,7 +185,6 @@
     aria-labelledby="modal-product-name"
     aria-hidden="true"
   >
-
     <button
       type="button"
       class="icon-button product-modal-close"
@@ -214,15 +193,12 @@
     >✕</button>
 
     <div class="product-modal-content">
-
       <div class="product-modal-image">
         <img id="modal-product-image" src="" alt="">
       </div>
 
       <div class="product-modal-info">
-
         <p class="eyebrow" id="modal-product-brand">RV PARFUMS</p>
-
         <h2 id="modal-product-name">Nombre del producto</h2>
 
         <p
@@ -239,7 +215,6 @@
 
         <div class="product-modal-quantity">
           <span>Cantidad</span>
-
           <div class="qty">
             <button type="button" id="modal-qty-minus" aria-label="Restar cantidad">−</button>
             <span id="modal-qty">1</span>
@@ -256,26 +231,21 @@
         </button>
 
         <p class="form-message" id="modal-product-message"></p>
-
       </div>
     </div>
-
   </section>
 
   <!-- CARRITO -->
   <div class="overlay" id="cart-overlay"></div>
 
   <aside class="cart-panel" id="cart-panel" aria-label="Carrito de compras">
-
     <div class="cart-head">
-
       <div>
         <p class="eyebrow">TU SELECCIÓN</p>
         <h3>Mi carrito</h3>
       </div>
 
       <button class="icon-button" id="close-cart" aria-label="Cerrar">✕</button>
-
     </div>
 
     <div id="cart-items" class="cart-items">
@@ -288,7 +258,6 @@
     </div>
 
     <form id="checkout-form" class="checkout-form">
-
       <input
         name="customer"
         type="text"
@@ -310,9 +279,7 @@
       <small class="muted">
         Completá tu nombre y enviá tu pedido por WhatsApp.
       </small>
-
     </form>
-
   </aside>
 
   <div class="toast" id="toast"></div>
