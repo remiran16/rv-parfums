@@ -14,6 +14,11 @@ let currentProduct = null;
 let selectedSize = null;
 let modalQuantity = 1;
 
+// LOS MÁS VENDIDOS
+let bestSellerProducts = [];
+let bestSellerPosition = 0;
+let bestSellerTimer = null;
+
 const $ = (selector) => document.querySelector(selector);
 
 const money = (value) =>
@@ -65,8 +70,12 @@ async function loadProducts() {
   }
 
   products = data || [];
+
   renderProducts();
   updateCategories();
+
+  // Cargar el carrusel después de tener los productos activos.
+  await loadBestSellers();
 }
 
 function getProductPrice(product) {
@@ -116,7 +125,7 @@ function renderProducts() {
     return `
       <article
         class="product-card"
-        data-open-product="${product.id}"
+        data-open-product="${escapeHTML(product.id)}"
         role="button"
         tabindex="0"
         aria-label="Ver ${escapeHTML(product.name)}"
@@ -166,6 +175,206 @@ function updateCategories() {
     select.value = currentValue;
   }
 }
+
+// ------------------------------
+// LOS MÁS VENDIDOS
+// ------------------------------
+
+async function loadBestSellers() {
+  const track = $("#bestsellers-track");
+
+  if (!track) return;
+
+  const { data, error } = await supabaseClient
+    .from("bestsellers")
+    .select("slot, product_id")
+    .order("slot", { ascending: true });
+
+  if (error) {
+    console.error("Error cargando los más vendidos:", error);
+
+    bestSellerProducts = [];
+    renderBestSellers();
+    return;
+  }
+
+  const slots = data || [];
+
+  // Mantener exactamente seis posiciones.
+  bestSellerProducts = Array.from({ length: 6 }, (_, index) => {
+    const slot = slots.find(
+      (item) => Number(item.slot) === index + 1
+    );
+
+    if (!slot || !slot.product_id) return null;
+
+    // Solo mostrar productos activos que todavía existan.
+    const product = products.find(
+      (item) =>
+        String(item.id) === String(slot.product_id) &&
+        item.active === true
+    );
+
+    return product || null;
+  });
+
+  bestSellerPosition = 0;
+
+  renderBestSellers();
+  startBestSellerCarousel();
+}
+
+function renderBestSellers() {
+  const track = $("#bestsellers-track");
+  if (!track) return;
+
+  // Se crean seis tarjetas, aunque no haya productos.
+  track.innerHTML = bestSellerProducts.map((product, index) => {
+    if (!product) {
+      return `
+        <article
+          class="bestseller-card is-empty"
+          aria-label="Espacio disponible"
+          data-bestseller-slot="${index + 1}"
+        >
+          <div class="bestseller-empty-content">
+            <span class="bestseller-empty-mark">RV</span>
+            <span class="bestseller-empty-label">PRÓXIMAMENTE</span>
+          </div>
+        </article>
+      `;
+    }
+
+    const image = product.image_url ||
+      "https://placehold.co/600x600?text=RV+Parfums";
+
+    const priceText = product.sale_type === "ml"
+      ? `Desde ${money(getProductPrice(product))}`
+      : money(getProductPrice(product));
+
+    const stock = Number(product.stock || 0);
+
+    return `
+      <article
+        class="product-card bestseller-card"
+        data-bestseller-product="${escapeHTML(product.id)}"
+        role="button"
+        tabindex="0"
+        aria-label="Ver ${escapeHTML(product.name)}"
+      >
+        <div class="product-card-image">
+          <img
+            src="${escapeHTML(image)}"
+            alt="${escapeHTML(product.name)}"
+            loading="lazy"
+          >
+          ${stock <= 0
+            ? '<span class="stock-badge">Agotado</span>'
+            : ""}
+        </div>
+
+        <div class="product-card-info">
+          <p class="product-brand">
+            ${escapeHTML(product.brand || "RV PARFUMS")}
+          </p>
+
+          <h3>${escapeHTML(product.name)}</h3>
+
+          <p class="product-description">
+            ${escapeHTML(product.description || "")}
+          </p>
+
+          <strong class="product-price">${priceText}</strong>
+
+          <span class="product-view-link">Ver producto →</span>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  updateBestSellerPosition();
+  renderBestSellerDots();
+}
+
+function updateBestSellerPosition() {
+  const track = $("#bestsellers-track");
+  if (!track) return;
+
+  // Cada tarjeta ocupa el 50% del carrusel.
+  track.style.transform =
+    `translateX(-${bestSellerPosition * 50}%)`;
+}
+
+function renderBestSellerDots() {
+  const dots = $("#bestsellers-dots");
+  if (!dots) return;
+
+  dots.innerHTML = Array.from({ length: 6 }, (_, index) => `
+    <span
+      class="bestseller-dot ${index === bestSellerPosition ? "active" : ""}"
+    ></span>
+  `).join("");
+}
+
+function moveBestSellerCarousel() {
+  const track = $("#bestsellers-track");
+
+  if (!track || bestSellerProducts.length !== 6) return;
+
+  // Una posición hacia la izquierda.
+  bestSellerPosition = (bestSellerPosition + 1) % 6;
+
+  updateBestSellerPosition();
+  renderBestSellerDots();
+}
+
+function startBestSellerCarousel() {
+  clearInterval(bestSellerTimer);
+
+  bestSellerTimer = null;
+
+  const track = $("#bestsellers-track");
+
+  if (!track) return;
+
+  // Movimiento incluso cuando los seis espacios están vacíos.
+  bestSellerTimer = setInterval(() => {
+    if (!document.hidden) {
+      moveBestSellerCarousel();
+    }
+  }, 2000);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && $("#bestsellers-track")) {
+    // No reinicia el contador si ya está funcionando.
+    if (!bestSellerTimer) {
+      startBestSellerCarousel();
+    }
+  }
+});
+
+$("#bestsellers-track")?.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-bestseller-product]");
+
+  if (!card) return;
+
+  openProduct(card.dataset.bestsellerProduct);
+});
+
+$("#bestsellers-track")?.addEventListener("keydown", (event) => {
+  if (
+    event.key !== "Enter" &&
+    event.key !== " "
+  ) return;
+
+  const card = event.target.closest("[data-bestseller-product]");
+
+  if (!card) return;
+
+  event.preventDefault();
+  openProduct(card.dataset.bestsellerProduct);
+});
 
 // ------------------------------
 // VENTANA DE DETALLES
@@ -625,93 +834,6 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   }
 
   try {
-    // INSERTAR SIN SELECT PARA LOS VISITANTES
     const { error } = await supabaseClient
       .from("orders")
-      .insert([order]);
-
-    if (error) {
-      console.error("Error guardando pedido:", error);
-
-      const errorDetails = [
-        `Mensaje: ${error.message || "Sin mensaje"}`,
-        error.details ? `Detalles: ${error.details}` : "",
-        error.hint ? `Pista: ${error.hint}` : "",
-        error.code ? `Código: ${error.code}` : ""
-      ].filter(Boolean).join("\n");
-
-      alert(
-        "RV PARFUMS - ERROR AL REGISTRAR EL PEDIDO\n\n" +
-        errorDetails +
-        "\n\nEnviame una captura de este mensaje para solucionarlo."
-      );
-
-      return;
-    }
-
-    console.log("Pedido registrado correctamente.");
-
-    let message = `Hola, quiero realizar este pedido en RV Parfums:\n\n`;
-
-    cart.forEach((item) => {
-      message += `• ${item.name}`;
-
-      if (item.size) {
-        message += ` (${item.size})`;
-      }
-
-      message += ` x${item.qty} — ${money(item.price * item.qty)}\n`;
-    });
-
-    message += `\nTotal: ${money(total)}`;
-    message += `\nNombre: ${customerName}.`;
-
-    if (phone) {
-      message += `\nTeléfono: ${phone}`;
-    }
-
-    if (address) {
-      message += `\nDirección: ${address}`;
-    }
-
-    if (notes) {
-      message += `\nMensaje: ${notes}`;
-    }
-
-    const whatsappURL =
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-
-    cart = [];
-    renderCart();
-    form.reset();
-    closeCart();
-
-    window.location.href = whatsappURL;
-
-  } catch (error) {
-    console.error("Error inesperado al registrar pedido:", error);
-
-    alert(
-      "RV PARFUMS - ERROR INESPERADO\n\n" +
-      (error.message || String(error)) +
-      "\n\nEnviame una captura de este mensaje."
-    );
-
-  } finally {
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
-    }
-  }
-});
-
-// ------------------------------
-// INICIO
-// ------------------------------
-
-if ($("#year")) {
-  $("#year").textContent = new Date().getFullYear();
-}
-
-renderCart();
-loadProducts();
+      .in
