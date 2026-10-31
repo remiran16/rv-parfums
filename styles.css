@@ -1125,10 +1125,10 @@ body.modal-open { overflow:hidden; }
 
 /* Logo de la esquina superior izquierda */
 .brand-mark {
-  background-image: url("./rv-logo.jpeg");
-  background-position: center;
+  background-image: url("./rv-logo-transparente.png");
+  background-position: center 28%;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: 175% auto;
   border: none;
   font-size: 0;
   color: transparent;
