@@ -573,7 +573,6 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   const form = event.currentTarget;
   const formData = new FormData(form);
 
-  // DATOS DEL FORMULARIO
   const customerName = String(
     formData.get("customer") ||
     formData.get("customer_name") ||
@@ -608,7 +607,6 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     quantity: item.qty
   }));
 
-  // PEDIDO PARA SUPABASE
   const order = {
     customer_name: customerName,
     phone: phone,
@@ -627,15 +625,26 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   }
 
   try {
-    const { error } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from("orders")
-      .insert([order]);
+      .insert([order])
+      .select();
 
     if (error) {
       console.error("Error guardando pedido:", error);
-      console.error("Detalles del error:", error.message, error.details, error.hint);
 
-      showToast("No se pudo registrar el pedido. Intentá nuevamente.");
+      const errorDetails = [
+        `Mensaje: ${error.message || "Sin mensaje"}`,
+        error.details ? `Detalles: ${error.details}` : "",
+        error.hint ? `Pista: ${error.hint}` : "",
+        error.code ? `Código: ${error.code}` : ""
+      ].filter(Boolean).join("\n");
+
+      alert(
+        "RV PARFUMS - ERROR AL REGISTRAR EL PEDIDO\n\n" +
+        errorDetails +
+        "\n\nEnviame una captura de este mensaje para solucionarlo."
+      );
 
       if (submitButton) {
         submitButton.disabled = false;
@@ -645,7 +654,8 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
       return;
     }
 
-    // MENSAJE PARA WHATSAPP
+    console.log("Pedido registrado correctamente:", data);
+
     let message = `Hola, quiero realizar este pedido en RV Parfums:\n\n`;
 
     cart.forEach((item) => {
@@ -691,7 +701,11 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   } catch (error) {
     console.error("Error inesperado al registrar pedido:", error);
 
-    showToast("Ocurrió un error al registrar el pedido.");
+    alert(
+      "RV PARFUMS - ERROR INESPERADO\n\n" +
+      (error.message || String(error)) +
+      "\n\nEnviame una captura de este mensaje."
+    );
 
     if (submitButton) {
       submitButton.disabled = false;
@@ -710,3 +724,4 @@ if ($("#year")) {
 
 renderCart();
 loadProducts();
+    
