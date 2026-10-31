@@ -837,3 +837,56 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     const { error } = await supabaseClient
       .from("orders")
       .in
+    const { error } = await supabaseClient
+  .from("orders")
+  .insert([order]);
+
+if (error) {
+  console.error("Error guardando el pedido:", error);
+  showToast("No se pudo registrar el pedido. Intentá nuevamente.");
+  return;
+}
+
+const messageLines = [
+  `Hola, soy ${customerName}. Quiero realizar el siguiente pedido:`,
+  "",
+  ...orderItems.map((item) =>
+    `• ${item.name}${item.size ? ` (${item.size})` : ""} x${item.quantity} — ${money(item.price * item.quantity)}`
+  ),
+  "",
+  `TOTAL: ${money(total)}`,
+  "",
+  `Teléfono: ${phone || "No indicado"}`,
+  `Dirección: ${address || "No indicada"}`,
+  `Observaciones: ${notes || "Ninguna"}`
+];
+
+const whatsappURL =
+  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(messageLines.join("\n"))}`;
+
+cart = [];
+renderCart();
+form.reset();
+
+closeCart();
+showToast("Pedido registrado correctamente.");
+
+window.open(whatsappURL, "_blank");
+
+} catch (error) {
+  console.error("Error inesperado:", error);
+  showToast("Ocurrió un error al procesar el pedido.");
+} finally {
+  if (submitButton) {
+    submitButton.disabled = false;
+    submitButton.textContent = "CONFIRMAR PEDIDO";
+  }
+}
+});
+
+// ------------------------------
+// INICIALIZACIÓN
+// ------------------------------
+
+renderCart();
+loadProducts();
