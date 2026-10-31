@@ -670,3 +670,107 @@ body.modal-open{overflow:hidden}
     font-size: 9px !important;
   }
 }
+/* ==========================================
+   CORRECCIÓN DE ALTURA - DESTACADOS
+========================================== */
+
+.featured-section,
+.featured-section * {
+  box-sizing: border-box;
+}
+
+.featured-section {
+  overflow: hidden;
+}
+
+.featured-carousel {
+  display: grid !important;
+  grid-template-columns: 40px minmax(0, 1fr) 40px !important;
+  align-items: center !important;
+  width: 100%;
+  min-width: 0;
+}
+
+.featured-viewport {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  max-height: 440px !important;
+  overflow: hidden !important;
+}
+
+.featured-track {
+  display: flex !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 440px !important;
+}
+
+.featured-card {
+  flex: 0 0 33.333333% !important;
+  width: 33.333333% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  max-height: 440px !important;
+  padding: 0 9px !important;
+  overflow: hidden !important;
+}
+
+.featured-card-image {
+  width: 100% !important;
+  height: 280px !important;
+  max-height: 280px !important;
+  aspect-ratio: 1 / 1 !important;
+  overflow: hidden !important;
+  background: #1b1b1b;
+}
+
+.featured-card-image img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.featured-card-info {
+  height: auto !important;
+  max-height: 130px !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 950px) {
+  .featured-card {
+    flex-basis: 50% !important;
+    width: 50% !important;
+  }
+}
+
+@media (max-width: 650px) {
+  .featured-carousel {
+    grid-template-columns: 30px minmax(0, 1fr) 30px !important;
+  }
+
+  .featured-viewport,
+  .featured-track {
+    max-height: 390px !important;
+  }
+
+  .featured-card {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-height: 390px !important;
+    padding: 0 5px !important;
+  }
+
+  .featured-card-image {
+    height: 230px !important;
+    max-height: 230px !important;
+  }
+
+  .featured-card-info {
+    max-height: 130px !important;
+  }
+}
