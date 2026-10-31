@@ -419,3 +419,91 @@ body.modal-open{overflow:hidden}
   border:1px solid #59482e;
   display:grid;
   p
+  place-items:center;
+  color:var(--gold);
+  font-family:"Playfair Display",serif;
+  font-size:22px;
+  letter-spacing:.08em;
+}
+
+.bestseller-empty-label{
+  color:#827b6e;
+  font-size:8px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+}
+
+/* Indicadores del carrusel */
+.bestsellers-dots{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+  margin-top:22px;
+}
+
+.bestseller-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#514b40;
+  transition:all .3s ease;
+}
+
+.bestseller-dot.active{
+  width:19px;
+  border-radius:10px;
+  background:var(--gold);
+}
+
+/* Adaptación para móviles */
+@media(max-width:650px){
+  .bestsellers-section{
+    padding:38px 18px 35px;
+  }
+
+  .bestsellers-heading{
+    margin-bottom:18px;
+  }
+
+  .bestsellers-heading h2{
+    font-size:30px;
+  }
+
+  .bestsellers-note{
+    font-size:7px;
+  }
+
+  .bestsellers-track{
+    gap:10px;
+  }
+
+  .bestseller-card{
+    flex:0 0 calc((100% - 10px) / 2);
+    max-width:calc((100% - 10px) / 2);
+  }
+
+  .bestseller-card.is-empty{
+    min-height:300px;
+  }
+
+  .bestseller-empty-content{
+    min-height:300px;
+  }
+
+  .bestseller-empty-mark{
+    width:42px;
+    height:42px;
+    font-size:19px;
+  }
+
+  .bestseller-empty-label{
+    font-size:7px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .bestsellers-track{
+    transition:none;
+  }
+}
