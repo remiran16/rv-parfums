@@ -287,3 +287,93 @@ body.modal-open{overflow:hidden}
   .product-modal-close{top:9px;right:9px}
   .modal-size-option{padding:12px 10px}
 }
+
+/* ==========================================
+   RV PARFUMS - CARRITO OVALADO Y CONTADOR BLANCO
+========================================== */
+
+.cart-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  padding: 10px 19px;
+  border: 1px solid var(--gold);
+  border-radius: 50px;
+
+  background: transparent;
+  color: var(--gold);
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+
+  transition: all .25s ease;
+}
+
+.cart-trigger .cart-icon {
+  width: 19px;
+  height: 19px;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+/* CÍRCULO BLANCO DE CANTIDAD */
+.cart-trigger #cart-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+
+  margin-left: 2px;
+
+  border-radius: 50%;
+  background: #ffffff;
+  color: #111111;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+
+  border: none;
+}
+
+/* EFECTO AL PASAR EL DEDO O RATÓN */
+.cart-trigger:hover {
+  background: var(--gold);
+  color: #0b0b0b;
+}
+
+.cart-trigger:hover .cart-icon {
+  color: #0b0b0b;
+}
+
+.cart-trigger:hover #cart-count {
+  background: #ffffff;
+  color: #111111;
+}
+
+/* AJUSTE PARA TELÉFONOS */
+@media (max-width: 650px) {
+  .cart-trigger {
+    padding: 8px 13px;
+    gap: 7px;
+    border-radius: 50px;
+  }
+
+  .cart-trigger .cart-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  .cart-trigger #cart-count {
+    width: 21px;
+    height: 21px;
+    min-width: 21px;
+    font-size: 10px;
+  }
+}
