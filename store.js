@@ -1,4 +1,3 @@
-
 const { createClient } = window.supabase;
 
 const supabaseClient = createClient(
@@ -236,7 +235,12 @@ function createBestSellerCard(product, index, clone = false) {
         data-bestseller-slot="${index + 1}"
       >
         <div class="bestseller-empty-content">
-          <span class="bestseller-empty-mark">RV</span>
+          <img
+            src="./rv-logo.jpeg"
+            alt="RV Parfums"
+            class="bestseller-logo"
+            loading="lazy"
+          >
           <span class="bestseller-empty-label">PRÓXIMAMENTE</span>
         </div>
       </article>
@@ -294,7 +298,6 @@ function renderBestSellers() {
   const track = $("#bestsellers-track");
   if (!track) return;
 
-  // Seis espacios originales y dos copias para el bucle continuo.
   const originalCards = bestSellerProducts.map((product, index) =>
     createBestSellerCard(product, index)
   );
@@ -362,8 +365,6 @@ function resetBestSellerCarousel() {
 
   if (bestSellerPosition !== 6) return;
 
-  // Al llegar a la copia de los dos primeros espacios,
-  // vuelve al inicio sin que se note el salto.
   track.style.transition = "none";
 
   bestSellerPosition = 0;
@@ -834,7 +835,6 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   }
 
   const form = event.currentTarget;
-  
   const formData = new FormData(form);
 
   const customerName = String(
