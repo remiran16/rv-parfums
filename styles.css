@@ -1,3 +1,4 @@
+
 :root{--bg:#0b0b0b;--panel:#141414;--panel2:#1b1b1b;--gold:#c9a96e;--gold2:#e2c995;--text:#f4f0e8;--muted:#99958d;--line:#2b2925;--red:#c46a62}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -14,7 +15,6 @@ button{cursor:pointer}
 .site-header nav{display:flex;gap:34px;color:#c5c0b6;font-size:12px;letter-spacing:.08em}
 .site-header nav a:hover,.footer a:hover{color:var(--gold)}
 
-/* CARRITO DORADO */
 .cart-trigger{
   display:inline-flex;
   align-items:center;
@@ -30,14 +30,8 @@ button{cursor:pointer}
   transition:all .25s ease;
   white-space:nowrap;
 }
-.cart-trigger .cart-icon{
-  color:var(--gold);
-  flex-shrink:0;
-}
-.cart-trigger span{
-  color:inherit;
-  margin-left:0;
-}
+.cart-trigger .cart-icon{color:var(--gold);flex-shrink:0}
+.cart-trigger span{color:inherit;margin-left:0}
 .cart-trigger #cart-count{
   background:var(--gold);
   color:#0b0b0b;
@@ -51,17 +45,9 @@ button{cursor:pointer}
   font-weight:700;
   letter-spacing:0;
 }
-.cart-trigger:hover{
-  background:var(--gold);
-  color:#0b0b0b;
-}
-.cart-trigger:hover .cart-icon{
-  color:#0b0b0b;
-}
-.cart-trigger:hover #cart-count{
-  background:#0b0b0b;
-  color:var(--gold);
-}
+.cart-trigger:hover{background:var(--gold);color:#0b0b0b}
+.cart-trigger:hover .cart-icon{color:#0b0b0b}
+.cart-trigger:hover #cart-count{background:#0b0b0b;color:var(--gold)}
 
 .hero{min-height:590px;padding:70px clamp(20px,10vw,150px) 45px;display:grid;grid-template-columns:1fr 1fr;align-items:center;position:relative;overflow:hidden}
 .hero-copy{z-index:1}
@@ -194,7 +180,6 @@ td small{display:block;color:var(--muted);margin-top:4px}
 .product-modal-info h2{font:500 clamp(28px,4vw,40px)/1.15 "Playfair Display",serif;margin:12px 0;color:var(--text)}
 .product-modal-description{color:var(--muted);font-size:12px;line-height:1.8;margin:15px 0 25px}
 
-/* OPCIONES DE 5 ML Y 10 ML */
 .modal-options-title{color:var(--gold);font-size:9px;font-weight:700;letter-spacing:.18em;margin:0 0 12px}
 .modal-size-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .modal-size-option{background:#191919;color:var(--text);border:1px solid #39342b;padding:14px 12px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;transition:.2s}
@@ -202,7 +187,6 @@ td small{display:block;color:var(--muted);margin-top:4px}
 .modal-size-option strong{color:var(--gold);font-size:13px}
 .modal-size-option:hover,.modal-size-option.selected{border-color:var(--gold);background:#242017}
 
-/* PRECIO Y CANTIDAD */
 .product-modal-price{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 0;margin:22px 0}
 .product-modal-price span{color:var(--muted);font-size:11px}
 .product-modal-price strong{color:var(--gold);font:24px "Playfair Display",serif}
@@ -214,7 +198,6 @@ td small{display:block;color:var(--muted);margin-top:4px}
 .product-modal-info .button:disabled{opacity:.4;cursor:not-allowed}
 .product-modal-info .form-message{color:var(--gold);font-size:11px;margin-top:12px;min-height:15px}
 
-/* ELEMENTOS DEL CARRITO */
 .cart-item{display:grid;grid-template-columns:1fr auto;gap:12px;border-bottom:1px solid var(--line);padding:16px 0;font-size:11px}
 .cart-item-info{display:flex;flex-direction:column;gap:6px}
 .cart-item-info strong:first-child{color:var(--text);font-size:12px}
@@ -287,92 +270,152 @@ body.modal-open{overflow:hidden}
   .modal-size-option{padding:12px 10px}
 }
 
+/* CARRITO OVALADO Y CONTADOR BLANCO */
+.cart-trigger{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  padding:10px 19px;
+  border:1px solid var(--gold);
+  border-radius:50px;
+  background:transparent;
+  color:var(--gold);
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.12em;
+  transition:all .25s ease;
+}
+.cart-trigger .cart-icon{width:19px;height:19px;color:var(--gold);flex-shrink:0}
+.cart-trigger #cart-count{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  min-width:22px;
+  margin-left:2px;
+  border-radius:50%;
+  background:#fff;
+  color:#111;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0;
+  border:none;
+}
+.cart-trigger:hover{background:var(--gold);color:#0b0b0b}
+.cart-trigger:hover .cart-icon{color:#0b0b0b}
+.cart-trigger:hover #cart-count{background:#fff;color:#111}
+
+@media(max-width:650px){
+  .cart-trigger{padding:8px 13px;gap:7px;border-radius:50px}
+  .cart-trigger .cart-icon{width:17px;height:17px}
+  .cart-trigger #cart-count{width:21px;height:21px;min-width:21px;font-size:10px}
+}
+
 /* ==========================================
-   RV PARFUMS - CARRITO OVALADO Y CONTADOR BLANCO
+   LOS MÁS VENDIDOS - RV PARFUMS
+   Estilos independientes del catálogo
 ========================================== */
 
-.cart-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-
-  padding: 10px 19px;
-  border: 1px solid var(--gold);
-  border-radius: 50px;
-
-  background: transparent;
-  color: var(--gold);
-
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .12em;
-
-  transition: all .25s ease;
+.bestsellers-section{
+  width:100%;
+  max-width:100%;
+  padding:55px clamp(18px,8vw,115px) 48px;
+  background:#0b0b0b;
+  overflow:hidden;
 }
 
-.cart-trigger .cart-icon {
-  width: 19px;
-  height: 19px;
-  color: var(--gold);
-  flex-shrink: 0;
+.bestsellers-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:15px;
+  margin-bottom:25px;
 }
 
-/* CÍRCULO BLANCO DE CANTIDAD */
-.cart-trigger #cart-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-
-  margin-left: 2px;
-
-  border-radius: 50%;
-  background: #ffffff;
-  color: #111111;
-
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0;
-
-  border: none;
+.bestsellers-heading .eyebrow{
+  margin:0 0 10px;
 }
 
-/* EFECTO AL PASAR EL DEDO O RATÓN */
-.cart-trigger:hover {
-  background: var(--gold);
-  color: #0b0b0b;
+.bestsellers-heading h2{
+  font:500 clamp(30px,3.5vw,43px)/1.15 "Playfair Display",serif;
+  margin:0;
+  color:var(--text);
 }
 
-.cart-trigger:hover .cart-icon {
-  color: #0b0b0b;
+.bestsellers-heading h2 em{
+  color:var(--gold);
+  font-weight:500;
 }
 
-.cart-trigger:hover #cart-count {
-  background: #ffffff;
-  color: #111111;
+.bestsellers-note{
+  color:var(--muted);
+  font-size:8px;
+  letter-spacing:.18em;
+  white-space:nowrap;
 }
 
-/* AJUSTE PARA TELÉFONOS */
-@media (max-width: 650px) {
-  .cart-trigger {
-    padding: 8px 13px;
-    gap: 7px;
-    border-radius: 50px;
-  }
-
-  .cart-trigger .cart-icon {
-    width: 17px;
-    height: 17px;
-  }
-
-  .cart-trigger #cart-count {
-    width: 21px;
-    height: 21px;
-    min-width: 21px;
-    font-size: 10px;
-  }
+.bestsellers-carousel{
+  width:100%;
+  max-width:100%;
+  overflow:hidden;
 }
+
+.bestsellers-viewport{
+  width:100%;
+  overflow:hidden;
+}
+
+.bestsellers-track{
+  display:flex;
+  gap:20px;
+  width:100%;
+  transition:transform .65s cubic-bezier(.22,.61,.36,1);
+  will-change:transform;
+}
+
+.bestseller-card{
+  flex:0 0 calc((100% - 20px) / 2);
+  min-width:0;
+  max-width:calc((100% - 20px) / 2);
+}
+
+/* Los espacios vacíos mantienen la apariencia de las tarjetas */
+.bestseller-card.is-empty{
+  height:auto;
+  min-height:390px;
+  background:#151515;
+  border:1px solid #24221e;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  cursor:default;
+  transition:border-color .25s;
+}
+
+.bestseller-card.is-empty:hover{
+  transform:none;
+  border-color:#24221e;
+}
+
+.bestseller-empty-content{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:13px;
+  width:100%;
+  height:100%;
+  min-height:390px;
+  background:
+    radial-gradient(ellipse at center,#211d16 0%,#151515 65%);
+}
+
+.bestseller-empty-mark{
+  width:48px;
+  height:48px;
+  border:1px solid #59482e;
+  display:grid;
+  p
