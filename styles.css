@@ -1181,3 +1181,15 @@ body.modal-open { overflow:hidden; }
 .manifesto h2 em {
   font-style: italic;
 }
+.manifesto h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(25px, 3.2vw, 38px);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.5px;
+}
+
+.manifesto h2 em {
+  color: #c9a45c;
+  font-style: italic;
+}
