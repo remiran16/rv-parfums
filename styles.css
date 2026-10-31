@@ -1169,3 +1169,15 @@ body.modal-open { overflow:hidden; }
     height: 90px;
   }
 }
+/* Frase final: estilo elegante y más discreto */
+.manifesto h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(25px, 3.2vw, 38px);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.5px;
+}
+
+.manifesto h2 em {
+  font-style: italic;
+}
