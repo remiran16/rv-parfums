@@ -1,3 +1,4 @@
+
 const { createClient } = window.supabase;
 
 const supabaseClient = createClient(
@@ -624,10 +625,10 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   }
 
   try {
-    const { data, error } = await supabaseClient
+    // INSERTAR SIN SELECT PARA LOS VISITANTES
+    const { error } = await supabaseClient
       .from("orders")
-      .insert([order])
-      .select();
+      .insert([order]);
 
     if (error) {
       console.error("Error guardando pedido:", error);
@@ -645,15 +646,10 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
         "\n\nEnviame una captura de este mensaje para solucionarlo."
       );
 
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
-      }
-
       return;
     }
 
-    console.log("Pedido registrado correctamente:", data);
+    console.log("Pedido registrado correctamente.");
 
     let message = `Hola, quiero realizar este pedido en RV Parfums:\n\n`;
 
@@ -690,11 +686,6 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     form.reset();
     closeCart();
 
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
-    }
-
     window.location.href = whatsappURL;
 
   } catch (error) {
@@ -706,6 +697,7 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
       "\n\nEnviame una captura de este mensaje."
     );
 
+  } finally {
     if (submitButton) {
       submitButton.disabled = false;
       submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
