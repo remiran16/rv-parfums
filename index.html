@@ -7,24 +7,34 @@
   <meta name="theme-color" content="#0b0b0b">
   <meta name="description" content="RV Parfums: selección exclusiva de fragancias.">
   <title>RV Parfums — Perfumería</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="styles.css">
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script defer src="store.js"></script>
 </head>
+
 <body>
+
   <header class="site-header">
     <a class="brand" href="#">
       <span class="brand-mark">RV</span>
-      <span><b>RV PARFUMS</b><small>PERFUMERÍA</small></span>
+      <span>
+        <b>RV PARFUMS</b>
+        <small>PERFUMERÍA</small>
+      </span>
     </a>
+
     <nav>
       <a href="#catalogo">Catálogo</a>
       <a href="#nosotros">Nosotros</a>
     </nav>
+
     <button class="cart-trigger" id="open-cart" aria-label="Abrir carrito">
       <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="9" cy="21" r="1"/>
@@ -37,20 +47,24 @@
   </header>
 
   <main>
+
+    <!-- PORTADA PRINCIPAL -->
     <section class="hero">
       <div class="hero-copy">
         <h1>El arte de<br><em>destacar.</em></h1>
+
         <a class="button button-gold" href="#catalogo">
           EXPLORAR FRAGANCIAS <span>↗</span>
         </a>
       </div>
+
       <div class="hero-bottom">
         <span>01 — SELECCIÓN</span>
         <span>CALIDAD · ESTILO · IDENTIDAD</span>
       </div>
     </section>
 
-    <!-- SECCIÓN LOS MÁS VENDIDOS -->
+    <!-- LOS MÁS VENDIDOS -->
     <section class="bestsellers-section" id="los-mas-vendidos">
 
       <div class="bestsellers-heading">
@@ -60,6 +74,7 @@
       </div>
 
       <div class="bestsellers-carousel">
+
         <div
           class="bestsellers-viewport"
           id="bestsellers-viewport"
@@ -68,15 +83,19 @@
             class="bestsellers-track"
             id="bestsellers-track"
           >
-            <!-- Los seis espacios serán cargados desde Supabase -->
+
+            <!-- Los seis espacios se cargan desde Supabase -->
+
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
             <div class="bestseller-card is-empty"></div>
+
           </div>
         </div>
+
       </div>
 
       <div
@@ -88,100 +107,175 @@
     </section>
     <!-- FIN DE LOS MÁS VENDIDOS -->
 
+    <!-- PRODUCTOS DESTACADOS: SECCIÓN OCULTA -->
     <section class="featured-section" id="destacados" hidden>
+
       <div class="featured-heading">
         <div>
           <p class="eyebrow">LA SELECCIÓN DE RV PARFUMS</p>
           <h2>Nuestras <em>destacadas</em></h2>
         </div>
+
         <span class="featured-note">SELECCIÓN EXCLUSIVA</span>
       </div>
 
       <div class="featured-carousel">
+
         <button class="featured-arrow" id="featured-prev" type="button" aria-label="Productos anteriores">‹</button>
+
         <div class="featured-viewport" id="featured-viewport">
           <div class="featured-track" id="featured-track"></div>
         </div>
+
         <button class="featured-arrow" id="featured-next" type="button" aria-label="Productos siguientes">›</button>
+
       </div>
+
       <div class="featured-dots" id="featured-dots"></div>
+
     </section>
 
+    <!-- CATÁLOGO -->
     <section class="catalog-section" id="catalogo">
+
       <div class="section-heading">
         <div>
           <p class="eyebrow">NUESTRA COLECCIÓN</p>
           <h2>Encontrá tu <em>fragancia</em></h2>
         </div>
+
         <p class="muted">Una selección para cada personalidad.</p>
       </div>
 
       <div class="catalog-tools">
-        <input id="search" type="search" placeholder="Buscar perfume o marca…" aria-label="Buscar productos">
+
+        <input
+          id="search"
+          type="search"
+          placeholder="Buscar perfume o marca…"
+          aria-label="Buscar productos"
+        >
+
         <select id="category-filter" aria-label="Filtrar por categoría">
           <option value="">Todas las categorías</option>
         </select>
+
       </div>
 
       <div id="product-grid" class="product-grid">
         <div class="loading">Cargando colección…</div>
       </div>
+
     </section>
 
+    <!-- FRASE FINAL -->
     <section class="manifesto" id="nosotros">
-      <h2>Un buen aroma no se olvida.</h2>
+      <h2>Un buen aroma no se <em>olvida.</em></h2>
     </section>
+
   </main>
 
+  <!-- PIE DE PÁGINA -->
   <footer class="footer">
+
     <a class="brand" href="#">
       <span class="brand-mark">RV</span>
-      <span><b>RV PARFUMS</b><small>PERFUMERÍA</small></span>
+      <span>
+        <b>RV PARFUMS</b>
+        <small>PERFUMERÍA</small>
+      </span>
     </a>
-    <span>© <span id="year"></span> · Todos los derechos reservados</span>
+
+    <span>
+      © <span id="year"></span> · Todos los derechos reservados
+    </span>
+
     <a href="admin.html">Administración</a>
+
   </footer>
 
+  <!-- MODAL DE PRODUCTOS -->
   <div class="overlay" id="product-overlay" aria-hidden="true"></div>
 
-  <section class="product-modal" id="product-modal" role="dialog" aria-modal="true" aria-labelledby="modal-product-name" aria-hidden="true">
-    <button type="button" class="icon-button product-modal-close" id="close-product-modal" aria-label="Cerrar producto">✕</button>
+  <section
+    class="product-modal"
+    id="product-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-product-name"
+    aria-hidden="true"
+  >
+
+    <button
+      type="button"
+      class="icon-button product-modal-close"
+      id="close-product-modal"
+      aria-label="Cerrar producto"
+    >✕</button>
+
     <div class="product-modal-content">
+
       <div class="product-modal-image">
         <img id="modal-product-image" src="" alt="">
       </div>
+
       <div class="product-modal-info">
+
         <p class="eyebrow" id="modal-product-brand">RV PARFUMS</p>
+
         <h2 id="modal-product-name">Nombre del producto</h2>
-        <p class="product-modal-description" id="modal-product-description"></p>
+
+        <p
+          class="product-modal-description"
+          id="modal-product-description"
+        ></p>
+
         <div id="modal-purchase-options"></div>
+
         <div class="product-modal-price">
           <span>Precio</span>
           <strong id="modal-product-price">Gs. 0</strong>
         </div>
+
         <div class="product-modal-quantity">
           <span>Cantidad</span>
+
           <div class="qty">
             <button type="button" id="modal-qty-minus" aria-label="Restar cantidad">−</button>
             <span id="modal-qty">1</span>
             <button type="button" id="modal-qty-plus" aria-label="Aumentar cantidad">+</button>
           </div>
         </div>
-        <button type="button" class="button button-gold full" id="modal-add-to-cart">AGREGAR A MI CARRITO</button>
+
+        <button
+          type="button"
+          class="button button-gold full"
+          id="modal-add-to-cart"
+        >
+          AGREGAR A MI CARRITO
+        </button>
+
         <p class="form-message" id="modal-product-message"></p>
+
       </div>
     </div>
+
   </section>
 
+  <!-- CARRITO -->
   <div class="overlay" id="cart-overlay"></div>
 
   <aside class="cart-panel" id="cart-panel" aria-label="Carrito de compras">
+
     <div class="cart-head">
+
       <div>
         <p class="eyebrow">TU SELECCIÓN</p>
         <h3>Mi carrito</h3>
       </div>
+
       <button class="icon-button" id="close-cart" aria-label="Cerrar">✕</button>
+
     </div>
 
     <div id="cart-items" class="cart-items">
@@ -194,13 +288,34 @@
     </div>
 
     <form id="checkout-form" class="checkout-form">
-      <input name="customer" type="text" placeholder="Nombre completo" autocomplete="name" required>
-      <textarea name="message" placeholder="Mensaje adicional (opcional)" rows="3"></textarea>
-      <button class="button button-gold full" type="submit">FINALIZAR POR WHATSAPP ↗</button>
-      <small class="muted">Completá tu nombre y enviá tu pedido por WhatsApp.</small>
+
+      <input
+        name="customer"
+        type="text"
+        placeholder="Nombre completo"
+        autocomplete="name"
+        required
+      >
+
+      <textarea
+        name="message"
+        placeholder="Mensaje adicional (opcional)"
+        rows="3"
+      ></textarea>
+
+      <button class="button button-gold full" type="submit">
+        FINALIZAR POR WHATSAPP ↗
+      </button>
+
+      <small class="muted">
+        Completá tu nombre y enviá tu pedido por WhatsApp.
+      </small>
+
     </form>
+
   </aside>
 
   <div class="toast" id="toast"></div>
+
 </body>
 </html>
