@@ -1,6 +1,6 @@
-
 (() => {
   const cfg = window.STORE_CONFIG || {};
+
   const ready = cfg.SUPABASE_URL?.startsWith("https://") &&
     cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_ANON_KEY.includes("PEGAR_AQUI");
@@ -9,22 +9,27 @@
     ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
     : null;
 
-  const $ = s => document.querySelector(s);
+  const $ = selector => document.querySelector(selector);
   const money = n => `${cfg.CURRENCY || "Gs."} ${Number(n || 0).toLocaleString("es-PY")}`;
 
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[c]));
 
-  function msg(id, t) {
-    $(id).textContent = t;
+  function msg(id, text) {
+    const element = $(id);
+    if (element) element.textContent = text;
   }
 
-  function toast(t) {
-    const el = $("#toast");
-    el.textContent = t;
-    el.classList.add("show");
-    setTimeout(() => el.classList.remove("show"), 2800);
+  function toast(text) {
+    const element = $("#toast");
+    if (!element) return;
+
+    element.textContent = text;
+    element.classList.add("show");
+
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => element.classList.remove("show"), 2800);
   }
 
   function formData() {
@@ -32,31 +37,44 @@
   }
 
   function togglePriceFields() {
-    const f = $("#product-form");
-    const type = f.elements.sale_type.value;
+    const form = $("#product-form");
+    const type = form.elements.sale_type.value;
+
     const unitField = $("#unit-price-field");
     const mlFields = $("#ml-price-fields");
-    const unitInput = f.elements.price_unit;
-    const price5 = f.elements.price_5ml;
-    const price10 = f.elements.price_10ml;
+
+    const unitInput = form.elements.price_unit;
+    const price5 = form.elements.price_5ml;
+    const price10 = form.elements.price_10ml;
+
     const isMl = type === "ml";
 
     unitField.hidden = isMl;
     mlFields.hidden = !isMl;
+
     unitInput.disabled = isMl;
     unitInput.required = !isMl;
+
     price5.disabled = !isMl;
     price10.disabled = !isMl;
+
     price5.required = isMl;
     price10.required = isMl;
   }
 
   async function checkSession() {
     if (!db) {
-      $("#login-message").textContent = "Primero configurá Supabase en config.js.";
+      msg("#login-message", "Primero configurá Supabase en config.js.");
       return;
     }
-    const { data } = await db.auth.getSession();
+
+    const { data, error } = await db.auth.getSession();
+
+    if (error) {
+      msg("#login-message", "No se pudo comprobar la sesión.");
+      return;
+    }
+
     if (data.session) showDashboard();
     else showLogin();
   }
@@ -84,63 +102,83 @@
     }
 
     const rows = data || [];
-    $("#stat-products").textContent = rows.filter(x => x.active).length;
-    $("#stat-stock").textContent = rows.reduce((a, x) => a + Number(x.stock || 0), 0);
-
     const featuredCount = rows.filter(p => p.featured).length;
 
-    $("#inventory-body").innerHTML = rows.length ? rows.map(p => `
-      <tr>
-        <td><b>${esc(p.name)}</b><small>${esc(p.brand || "")}</small></td>
-        <td>${p.sale_type === "ml"
-          ? `<small>5 ml: ${money(p.price_5ml)}</small><small>10 ml: ${money(p.price_10ml)}</small>`
-          : `<small>Por unidad: ${money(p.price)}</small>`}
-        </td>
-        <td>
-          <input class="stock-input" type="number" min="0"
-            value="${Number(p.stock || 0)}" data-stock="${p.id}" aria-label="Stock">
-        </td>
-        <td>${p.active ? '<span class="status active">Activo</span>' : '<span class="status">Oculto</span>'}</td>
-        <td>
-          <label class="featured-toggle">
-            <input type="checkbox" data-featured="${p.id}" ${p.featured ? "checked" : ""}>
-            <span>${p.featured ? "Sí" : "No"}</span>
-          </label>
-        </td>
-        <td>
-          <button class="text-button" data-edit="${p.id}">Editar</button>
-          <button class="text-button danger" data-delete="${p.id}">Borrar</button>
-        </td>
-      </tr>
-    `).join("") : '<tr><td colspan="6">Todavía no hay productos.</td></tr>';
+    $("#stat-products").textContent = rows.filter(p => p.active).length;
+    $("#stat-stock").textContent = rows.reduce(
+      (sum, p) => sum + Number(p.stock || 0), 0
+    );
 
-    $("#inventory-body").querySelectorAll("[data-edit]").forEach(b => {
-      b.onclick = () => editProduct(rows.find(p => String(p.id) === b.dataset.edit));
+    $("#inventory-body").innerHTML = rows.length
+      ? rows.map(p => `
+        <tr>
+          <td>
+            <b>${esc(p.name)}</b>
+            <small>${esc(p.brand || "")}</small>
+          </td>
+          <td>
+            ${p.sale_type === "ml"
+              ? `<small>5 ml: ${money(p.price_5ml)}</small>
+                 <small>10 ml: ${money(p.price_10ml)}</small>`
+              : `<small>Por unidad: ${money(p.price)}</small>`
+            }
+          </td>
+          <td>
+            <input class="stock-input" type="number" min="0"
+              value="${Number(p.stock || 0)}"
+              data-stock="${esc(p.id)}" aria-label="Stock">
+          </td>
+          <td>${p.active
+            ? '<span class="status active">Activo</span>'
+            : '<span class="status">Oculto</span>'}
+          </td>
+          <td>
+            <label class="featured-check">
+              <input type="checkbox"
+                data-featured="${esc(p.id)}"
+                ${p.featured ? "checked" : ""}
+                ${!p.active ? "disabled" : ""}>
+              <span>Mostrar en portada</span>
+            </label>
+          </td>
+          <td>
+            <button class="text-button" data-edit="${esc(p.id)}">Editar</button>
+            <button class="text-button danger" data-delete="${esc(p.id)}">Borrar</button>
+          </td>
+        </tr>
+      `).join("")
+      : '<tr><td colspan="6">Todavía no hay productos.</td></tr>';
+
+    msg("#featured-message", `${featuredCount} de 6 productos seleccionados para la portada.`);
+
+    $("#inventory-body").querySelectorAll("[data-edit]").forEach(button => {
+      button.onclick = () => {
+        editProduct(rows.find(p => String(p.id) === button.dataset.edit));
+      };
     });
 
-    $("#inventory-body").querySelectorAll("[data-delete]").forEach(b => {
-      b.onclick = () => deleteProduct(b.dataset.delete);
+    $("#inventory-body").querySelectorAll("[data-delete]").forEach(button => {
+      button.onclick = () => deleteProduct(button.dataset.delete);
     });
 
-    $("#inventory-body").querySelectorAll("[data-stock]").forEach(i => {
-      i.onchange = () => updateStock(i.dataset.stock, i.value);
+    $("#inventory-body").querySelectorAll("[data-stock]").forEach(input => {
+      input.onchange = () => updateStock(input.dataset.stock, input.value);
     });
 
-    $("#inventory-body").querySelectorAll("[data-featured]").forEach(i => {
-      i.onchange = () => updateFeatured(i.dataset.featured, i.checked, rows);
+    $("#inventory-body").querySelectorAll("[data-featured]").forEach(input => {
+      input.onchange = () => updateFeatured(
+        input.dataset.featured,
+        input.checked,
+        rows
+      );
     });
-
-    if (featuredCount >= 6) {
-      $("#product-message").textContent = "Ya tenés 6 productos destacados en portada.";
-    }
   }
 
   async function updateFeatured(id, checked, rows) {
     const selected = rows.filter(p => p.featured).length;
-    const product = rows.find(p => String(p.id) === String(id));
 
-    if (checked && !product?.featured && selected >= 6) {
-      toast("Ya alcanzaste el máximo de 6 productos para la portada.");
+    if (checked && selected >= 6) {
+      toast("Solo podés seleccionar 6 productos destacados.");
       await loadInventory();
       return;
     }
@@ -152,9 +190,13 @@
 
     if (error) {
       toast("No se pudo actualizar: " + error.message);
-    } else {
-      toast(checked ? "Producto agregado a la portada." : "Producto quitado de la portada.");
+      await loadInventory();
+      return;
     }
+
+    toast(checked
+      ? "Producto agregado a la portada."
+      : "Producto quitado de la portada.");
 
     await loadInventory();
   }
@@ -167,52 +209,75 @@
       .limit(50);
 
     if (error) {
-      $("#orders-body").innerHTML = '<tr><td colspan="7">No se pudieron cargar los pedidos.</td></tr>';
+      $("#orders-body").innerHTML =
+        '<tr><td colspan="7">No se pudieron cargar los pedidos.</td></tr>';
       return;
     }
 
     const orders = data || [];
     $("#stat-orders").textContent = orders.length;
 
-    $("#orders-body").innerHTML = orders.length ? orders.map(o => `
-      <tr>
-        <td>${new Date(o.created_at).toLocaleDateString("es-PY")}</td>
-        <td><b>${esc(o.customer_name)}</b><small>${esc(o.phone)}</small></td>
-        <td>${(o.items || []).map(i => `${esc(i.name)}${i.size ? ` (${esc(i.size)})` : ""} ×${i.quantity}`).join("<br>")}</td>
-        <td>${money(o.total)}</td>
-        <td><span class="status">${esc(o.status)}</span></td>
-        <td>
-          <select data-status="${o.id}" aria-label="Estado del pedido">
-            <option ${o.status === "Nuevo" ? "selected" : ""}>Nuevo</option>
-            <option ${o.status === "En preparación" ? "selected" : ""}>En preparación</option>
-            <option ${o.status === "Entregado" ? "selected" : ""}>Entregado</option>
-            <option ${o.status === "Cancelado" ? "selected" : ""}>Cancelado</option>
-          </select>
-        </td>
-        <td><button class="text-button danger" data-delete-order="${o.id}" title="Eliminar pedido">🗑️</button></td>
-      </tr>
-    `).join("") : '<tr><td colspan="7">Todavía no hay pedidos.</td></tr>';
+    $("#orders-body").innerHTML = orders.length
+      ? orders.map(o => `
+        <tr>
+          <td>${new Date(o.created_at).toLocaleDateString("es-PY")}</td>
+          <td>
+            <b>${esc(o.customer_name)}</b>
+            <small>${esc(o.phone || "")}</small>
+          </td>
+          <td>${(o.items || []).map(i =>
+            `${esc(i.name)}${i.size ? ` (${esc(i.size)})` : ""} ×${i.quantity}`
+          ).join("<br>")}</td>
+          <td>${money(o.total)}</td>
+          <td><span class="status">${esc(o.status)}</span></td>
+          <td>
+            <select data-status="${esc(o.id)}" aria-label="Estado del pedido">
+              <option ${o.status === "Nuevo" ? "selected" : ""}>Nuevo</option>
+              <option ${o.status === "Pendiente" ? "selected" : ""}>Pendiente</option>
+              <option ${o.status === "En preparación" ? "selected" : ""}>En preparación</option>
+              <option ${o.status === "Entregado" ? "selected" : ""}>Entregado</option>
+              <option ${o.status === "Cancelado" ? "selected" : ""}>Cancelado</option>
+            </select>
+          </td>
+          <td>
+            <button class="text-button danger"
+              data-delete-order="${esc(o.id)}"
+              title="Eliminar pedido"
+              aria-label="Eliminar pedido">🗑️</button>
+          </td>
+        </tr>
+      `).join("")
+      : '<tr><td colspan="7">Todavía no hay pedidos.</td></tr>';
 
-    $("#orders-body").querySelectorAll("[data-status]").forEach(s => {
-      s.onchange = async () => {
-        const { error } = await db.from("orders")
-          .update({ status: s.value })
-          .eq("id", s.dataset.status);
+    $("#orders-body").querySelectorAll("[data-status]").forEach(select => {
+      select.onchange = async () => {
+        const { error } = await db
+          .from("orders")
+          .update({ status: select.value })
+          .eq("id", select.dataset.status);
 
-        toast(error ? "No se pudo actualizar: " + error.message : "Estado actualizado.");
+        toast(error
+          ? "No se pudo actualizar: " + error.message
+          : "Estado actualizado.");
+
         if (error) await loadOrders();
       };
     });
 
-    $("#orders-body").querySelectorAll("[data-delete-order]").forEach(b => {
-      b.onclick = () => deleteOrder(b.dataset.deleteOrder);
+    $("#orders-body").querySelectorAll("[data-delete-order]").forEach(button => {
+      button.onclick = () => deleteOrder(button.dataset.deleteOrder);
     });
   }
 
   async function deleteOrder(id) {
-    if (!confirm("¿Estás seguro de que querés eliminar este pedido? Esta acción no se puede deshacer.")) return;
+    if (!confirm("¿Estás seguro de que querés eliminar este pedido? Esta acción no se puede deshacer.")) {
+      return;
+    }
 
-    const { error } = await db.from("orders").delete().eq("id", id);
+    const { error } = await db
+      .from("orders")
+      .delete()
+      .eq("id", id);
 
     if (error) {
       toast("No se pudo eliminar: " + error.message);
@@ -226,21 +291,25 @@
   function editProduct(p) {
     if (!p) return;
 
-    const f = $("#product-form");
+    const form = $("#product-form");
 
-    for (const k of ["id", "name", "brand", "category", "description", "stock"]) {
-      f.elements[k].value = p[k] ?? "";
+    for (const key of [
+      "id", "name", "brand", "category", "description", "stock"
+    ]) {
+      form.elements[key].value = p[key] ?? "";
     }
 
     const type = p.sale_type || "unit";
-    f.elements.sale_type.value = type;
-    f.elements.price_unit.value = type === "unit" ? (p.price ?? "") : "";
-    f.elements.price_5ml.value = p.price_5ml ?? "";
-    f.elements.price_10ml.value = p.price_10ml ?? "";
-    f.elements.active.checked = !!p.active;
-    f.elements.featured.checked = !!p.featured;
+    form.elements.sale_type.value = type;
+
+    form.elements.price_unit.value = type === "unit" ? (p.price ?? "") : "";
+    form.elements.price_5ml.value = p.price_5ml ?? "";
+    form.elements.price_10ml.value = p.price_10ml ?? "";
+
+    form.elements.active.checked = !!p.active;
 
     togglePriceFields();
+
     $("#form-title").textContent = "Editar producto";
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -248,28 +317,44 @@
   async function deleteProduct(id) {
     if (!confirm("¿Seguro que querés borrar este producto?")) return;
 
-    const { error } = await db.from("products").delete().eq("id", id);
-    toast(error ? "No se pudo borrar: " + error.message : "Producto eliminado.");
+    const { error } = await db
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast("No se pudo borrar: " + error.message);
+      return;
+    }
+
+    toast("Producto eliminado.");
     await loadInventory();
   }
 
   async function updateStock(id, value) {
     const n = Math.max(0, Number(value) || 0);
-    const { error } = await db.from("products").update({ stock: n }).eq("id", id);
-    toast(error ? "No se pudo actualizar el stock." : "Stock actualizado.");
+
+    const { error } = await db
+      .from("products")
+      .update({ stock: n })
+      .eq("id", id);
+
+    toast(error
+      ? "No se pudo actualizar el stock: " + error.message
+      : "Stock actualizado.");
+
     await loadInventory();
   }
 
-  async function saveProduct(e) {
-    e.preventDefault();
+  async function saveProduct(event) {
+    event.preventDefault();
 
-    const f = $("#product-form");
+    const form = $("#product-form");
     const d = formData();
     const id = d.id || null;
     const type = d.sale_type;
-    const featured = f.elements.featured.checked;
 
-    let image_url = null;
+    let imageUrl = null;
     let price5 = 0;
     let price10 = 0;
     let priceUnit = 0;
@@ -293,43 +378,31 @@
       price5 = priceUnit;
     }
 
-    if (featured) {
-      const { data: selectedProducts, error: countError } = await db
-        .from("products")
-        .select("id")
-        .eq("featured", true);
-
-      if (countError) {
-        msg("#product-message", "No se pudo verificar la selección de portada: " + countError.message);
-        return;
-      }
-
-      const alreadyFeatured = (selectedProducts || []).some(p => String(p.id) === String(id));
-
-      if (!alreadyFeatured && (selectedProducts || []).length >= 6) {
-        msg("#product-message", "Ya hay 6 productos en portada. Quitá uno antes de agregar otro.");
-        return;
-      }
-    }
-
-    const file = f.elements.image.files[0];
+    const file = form.elements.image.files[0];
 
     if (file) {
       if (!file.type.startsWith("image/")) {
-        return msg("#product-message", "El archivo debe ser una imagen.");
+        msg("#product-message", "El archivo debe ser una imagen.");
+        return;
       }
 
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const path = `${crypto.randomUUID()}-${safe}`;
 
-      const { error: upErr } = await db.storage
+      const { error: uploadError } = await db.storage
         .from("product-images")
         .upload(path, file, { upsert: false });
 
-      if (upErr) return msg("#product-message", "Error subiendo imagen: " + upErr.message);
+      if (uploadError) {
+        msg("#product-message", "Error subiendo imagen: " + uploadError.message);
+        return;
+      }
 
-      const { data } = db.storage.from("product-images").getPublicUrl(path);
-      image_url = data.publicUrl;
+      const { data } = db.storage
+        .from("product-images")
+        .getPublicUrl(path);
+
+      imageUrl = data.publicUrl;
     }
 
     const row = {
@@ -342,11 +415,10 @@
       price_5ml: price5,
       price_10ml: price10,
       stock: Number(d.stock),
-      active: f.elements.active.checked,
-      featured
+      active: form.elements.active.checked
     };
 
-    if (image_url) row.image_url = image_url;
+    if (imageUrl) row.image_url = imageUrl;
 
     const result = id
       ? await db.from("products").update(row).eq("id", id)
@@ -358,11 +430,12 @@
     }
 
     msg("#product-message", "Producto guardado correctamente.");
-    f.reset();
-    f.elements.id.value = "";
-    f.elements.active.checked = true;
-    f.elements.featured.checked = false;
-    f.elements.sale_type.value = "unit";
+
+    form.reset();
+    form.elements.id.value = "";
+    form.elements.active.checked = true;
+    form.elements.sale_type.value = "unit";
+
     togglePriceFields();
     $("#form-title").textContent = "Agregar producto";
 
@@ -370,17 +443,20 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    $("#login-form").onsubmit = async e => {
-      e.preventDefault();
+    $("#login-form").onsubmit = async event => {
+      event.preventDefault();
       if (!db) return;
 
-      const f = new FormData(e.target);
+      const form = new FormData(event.target);
+
       const { error } = await db.auth.signInWithPassword({
-        email: f.get("email"),
-        password: f.get("password")
+        email: form.get("email"),
+        password: form.get("password")
       });
 
-      msg("#login-message", error ? "No se pudo ingresar. Revisá tus datos." : "");
+      msg("#login-message",
+        error ? "No se pudo ingresar. Revisá tus datos." : "");
+
       if (!error) showDashboard();
     };
 
@@ -393,11 +469,12 @@
     $("#sale-type").addEventListener("change", togglePriceFields);
 
     $("#reset-form").onclick = () => {
-      $("#product-form").reset();
-      $("#product-form").elements.id.value = "";
-      $("#product-form").elements.sale_type.value = "unit";
-      $("#product-form").elements.active.checked = true;
-      $("#product-form").elements.featured.checked = false;
+      const form = $("#product-form");
+      form.reset();
+      form.elements.id.value = "";
+      form.elements.sale_type.value = "unit";
+      form.elements.active.checked = true;
+
       togglePriceFields();
       $("#form-title").textContent = "Agregar producto";
       msg("#product-message", "");
@@ -407,4 +484,3 @@
     checkSession();
   });
 })();
-      
