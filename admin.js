@@ -1,6 +1,5 @@
 (() => {
   const cfg = window.STORE_CONFIG || {};
-
   const ready = cfg.SUPABASE_URL?.startsWith("https://") &&
     cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_ANON_KEY.includes("PEGAR_AQUI");
@@ -9,43 +8,38 @@
     ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
     : null;
 
-  const $ = selector => document.querySelector(selector);
+  const $ = s => document.querySelector(s);
   const money = n => `${cfg.CURRENCY || "Gs."} ${Number(n || 0).toLocaleString("es-PY")}`;
 
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[c]));
 
-  function msg(id, text) {
-    const element = $(id);
-    if (element) element.textContent = text;
+  function msg(id, t) {
+    $(id).textContent = t;
   }
 
-  function toast(text) {
-    const element = $("#toast");
-    if (!element) return;
-
-    element.textContent = text;
-    element.classList.add("show");
-
-    clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => element.classList.remove("show"), 2800);
+  function toast(t) {
+    const el = $("#toast");
+    el.textContent = t;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2800);
   }
 
   function formData() {
     return Object.fromEntries(new FormData($("#product-form")).entries());
   }
 
+  // MOSTRAR LOS CAMPOS SEGÚN LA MODALIDAD
   function togglePriceFields() {
-    const form = $("#product-form");
-    const type = form.elements.sale_type.value;
-
+    const f = $("#product-form");
+    const type = f.elements.sale_type.value;
     const unitField = $("#unit-price-field");
     const mlFields = $("#ml-price-fields");
 
-    const unitInput = form.elements.price_unit;
-    const price5 = form.elements.price_5ml;
-    const price10 = form.elements.price_10ml;
+    const unitInput = f.elements.price_unit;
+    const price5 = f.elements.price_5ml;
+    const price10 = f.elements.price_10ml;
 
     const isMl = type === "ml";
 
@@ -64,17 +58,11 @@
 
   async function checkSession() {
     if (!db) {
-      msg("#login-message", "Primero configurá Supabase en config.js.");
+      $("#login-message").textContent = "Primero configurá Supabase en config.js.";
       return;
     }
 
-    const { data, error } = await db.auth.getSession();
-
-    if (error) {
-      msg("#login-message", "No se pudo comprobar la sesión.");
-      return;
-    }
-
+    const { data } = await db.auth.getSession();
     if (data.session) showDashboard();
     else showLogin();
   }
@@ -102,12 +90,9 @@
     }
 
     const rows = data || [];
-    const featuredCount = rows.filter(p => p.featured).length;
 
-    $("#stat-products").textContent = rows.filter(p => p.active).length;
-    $("#stat-stock").textContent = rows.reduce(
-      (sum, p) => sum + Number(p.stock || 0), 0
-    );
+    $("#stat-products").textContent = rows.filter(x => x.active).length;
+    $("#stat-stock").textContent = rows.reduce((a, x) => a + Number(x.stock || 0), 0);
 
     $("#inventory-body").innerHTML = rows.length
       ? rows.map(p => `
@@ -126,79 +111,31 @@
           <td>
             <input class="stock-input" type="number" min="0"
               value="${Number(p.stock || 0)}"
-              data-stock="${esc(p.id)}" aria-label="Stock">
+              data-stock="${p.id}" aria-label="Stock">
           </td>
           <td>${p.active
             ? '<span class="status active">Activo</span>'
             : '<span class="status">Oculto</span>'}
           </td>
           <td>
-            <label class="featured-check">
-              <input type="checkbox"
-                data-featured="${esc(p.id)}"
-                ${p.featured ? "checked" : ""}
-                ${!p.active ? "disabled" : ""}>
-              <span>Mostrar en portada</span>
-            </label>
-          </td>
-          <td>
-            <button class="text-button" data-edit="${esc(p.id)}">Editar</button>
-            <button class="text-button danger" data-delete="${esc(p.id)}">Borrar</button>
+            <button class="text-button" data-edit="${p.id}">Editar</button>
+            <button class="text-button danger" data-delete="${p.id}">Borrar</button>
           </td>
         </tr>
       `).join("")
-      : '<tr><td colspan="6">Todavía no hay productos.</td></tr>';
+      : '<tr><td colspan="5">Todavía no hay productos.</td></tr>';
 
-    msg("#featured-message", `${featuredCount} de 6 productos seleccionados para la portada.`);
-
-    $("#inventory-body").querySelectorAll("[data-edit]").forEach(button => {
-      button.onclick = () => {
-        editProduct(rows.find(p => String(p.id) === button.dataset.edit));
-      };
+    $("#inventory-body").querySelectorAll("[data-edit]").forEach(b => {
+      b.onclick = () => editProduct(rows.find(p => String(p.id) === b.dataset.edit));
     });
 
-    $("#inventory-body").querySelectorAll("[data-delete]").forEach(button => {
-      button.onclick = () => deleteProduct(button.dataset.delete);
+    $("#inventory-body").querySelectorAll("[data-delete]").forEach(b => {
+      b.onclick = () => deleteProduct(b.dataset.delete);
     });
 
-    $("#inventory-body").querySelectorAll("[data-stock]").forEach(input => {
-      input.onchange = () => updateStock(input.dataset.stock, input.value);
+    $("#inventory-body").querySelectorAll("[data-stock]").forEach(i => {
+      i.onchange = () => updateStock(i.dataset.stock, i.value);
     });
-
-    $("#inventory-body").querySelectorAll("[data-featured]").forEach(input => {
-      input.onchange = () => updateFeatured(
-        input.dataset.featured,
-        input.checked,
-        rows
-      );
-    });
-  }
-
-  async function updateFeatured(id, checked, rows) {
-    const selected = rows.filter(p => p.featured).length;
-
-    if (checked && selected >= 6) {
-      toast("Solo podés seleccionar 6 productos destacados.");
-      await loadInventory();
-      return;
-    }
-
-    const { error } = await db
-      .from("products")
-      .update({ featured: checked })
-      .eq("id", id);
-
-    if (error) {
-      toast("No se pudo actualizar: " + error.message);
-      await loadInventory();
-      return;
-    }
-
-    toast(checked
-      ? "Producto agregado a la portada."
-      : "Producto quitado de la portada.");
-
-    await loadInventory();
   }
 
   async function loadOrders() {
@@ -223,7 +160,7 @@
           <td>${new Date(o.created_at).toLocaleDateString("es-PY")}</td>
           <td>
             <b>${esc(o.customer_name)}</b>
-            <small>${esc(o.phone || "")}</small>
+            <small>${esc(o.phone)}</small>
           </td>
           <td>${(o.items || []).map(i =>
             `${esc(i.name)}${i.size ? ` (${esc(i.size)})` : ""} ×${i.quantity}`
@@ -231,9 +168,8 @@
           <td>${money(o.total)}</td>
           <td><span class="status">${esc(o.status)}</span></td>
           <td>
-            <select data-status="${esc(o.id)}" aria-label="Estado del pedido">
+            <select data-status="${o.id}" aria-label="Estado del pedido">
               <option ${o.status === "Nuevo" ? "selected" : ""}>Nuevo</option>
-              <option ${o.status === "Pendiente" ? "selected" : ""}>Pendiente</option>
               <option ${o.status === "En preparación" ? "selected" : ""}>En preparación</option>
               <option ${o.status === "Entregado" ? "selected" : ""}>Entregado</option>
               <option ${o.status === "Cancelado" ? "selected" : ""}>Cancelado</option>
@@ -241,7 +177,7 @@
           </td>
           <td>
             <button class="text-button danger"
-              data-delete-order="${esc(o.id)}"
+              data-delete-order="${o.id}"
               title="Eliminar pedido"
               aria-label="Eliminar pedido">🗑️</button>
           </td>
@@ -249,23 +185,21 @@
       `).join("")
       : '<tr><td colspan="7">Todavía no hay pedidos.</td></tr>';
 
-    $("#orders-body").querySelectorAll("[data-status]").forEach(select => {
-      select.onchange = async () => {
+    $("#orders-body").querySelectorAll("[data-status]").forEach(s => {
+      s.onchange = async () => {
         const { error } = await db
           .from("orders")
-          .update({ status: select.value })
-          .eq("id", select.dataset.status);
+          .update({ status: s.value })
+          .eq("id", s.dataset.status);
 
-        toast(error
-          ? "No se pudo actualizar: " + error.message
-          : "Estado actualizado.");
+        toast(error ? "No se pudo actualizar: " + error.message : "Estado actualizado.");
 
         if (error) await loadOrders();
       };
     });
 
-    $("#orders-body").querySelectorAll("[data-delete-order]").forEach(button => {
-      button.onclick = () => deleteOrder(button.dataset.deleteOrder);
+    $("#orders-body").querySelectorAll("[data-delete-order]").forEach(b => {
+      b.onclick = () => deleteOrder(b.dataset.deleteOrder);
     });
   }
 
@@ -291,22 +225,22 @@
   function editProduct(p) {
     if (!p) return;
 
-    const form = $("#product-form");
+    const f = $("#product-form");
 
-    for (const key of [
+    for (const k of [
       "id", "name", "brand", "category", "description", "stock"
     ]) {
-      form.elements[key].value = p[key] ?? "";
+      f.elements[k].value = p[k] ?? "";
     }
 
     const type = p.sale_type || "unit";
-    form.elements.sale_type.value = type;
+    f.elements.sale_type.value = type;
 
-    form.elements.price_unit.value = type === "unit" ? (p.price ?? "") : "";
-    form.elements.price_5ml.value = p.price_5ml ?? "";
-    form.elements.price_10ml.value = p.price_10ml ?? "";
+    f.elements.price_unit.value = type === "unit" ? (p.price ?? "") : "";
+    f.elements.price_5ml.value = p.price_5ml ?? "";
+    f.elements.price_10ml.value = p.price_10ml ?? "";
 
-    form.elements.active.checked = !!p.active;
+    f.elements.active.checked = !!p.active;
 
     togglePriceFields();
 
@@ -322,12 +256,7 @@
       .delete()
       .eq("id", id);
 
-    if (error) {
-      toast("No se pudo borrar: " + error.message);
-      return;
-    }
-
-    toast("Producto eliminado.");
+    toast(error ? "No se pudo borrar: " + error.message : "Producto eliminado.");
     await loadInventory();
   }
 
@@ -339,22 +268,19 @@
       .update({ stock: n })
       .eq("id", id);
 
-    toast(error
-      ? "No se pudo actualizar el stock: " + error.message
-      : "Stock actualizado.");
-
+    toast(error ? "No se pudo actualizar el stock." : "Stock actualizado.");
     await loadInventory();
   }
 
-  async function saveProduct(event) {
-    event.preventDefault();
+  async function saveProduct(e) {
+    e.preventDefault();
 
-    const form = $("#product-form");
+    const f = $("#product-form");
     const d = formData();
     const id = d.id || null;
     const type = d.sale_type;
 
-    let imageUrl = null;
+    let image_url = null;
     let price5 = 0;
     let price10 = 0;
     let priceUnit = 0;
@@ -375,34 +301,33 @@
         return;
       }
 
+      // Compatibilidad con el campo de precio anterior
       price5 = priceUnit;
     }
 
-    const file = form.elements.image.files[0];
+    const file = f.elements.image.files[0];
 
     if (file) {
       if (!file.type.startsWith("image/")) {
-        msg("#product-message", "El archivo debe ser una imagen.");
-        return;
+        return msg("#product-message", "El archivo debe ser una imagen.");
       }
 
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const path = `${crypto.randomUUID()}-${safe}`;
 
-      const { error: uploadError } = await db.storage
+      const { error: upErr } = await db.storage
         .from("product-images")
         .upload(path, file, { upsert: false });
 
-      if (uploadError) {
-        msg("#product-message", "Error subiendo imagen: " + uploadError.message);
-        return;
+      if (upErr) {
+        return msg("#product-message", "Error subiendo imagen: " + upErr.message);
       }
 
       const { data } = db.storage
         .from("product-images")
         .getPublicUrl(path);
 
-      imageUrl = data.publicUrl;
+      image_url = data.publicUrl;
     }
 
     const row = {
@@ -415,10 +340,10 @@
       price_5ml: price5,
       price_10ml: price10,
       stock: Number(d.stock),
-      active: form.elements.active.checked
+      active: f.elements.active.checked
     };
 
-    if (imageUrl) row.image_url = imageUrl;
+    if (image_url) row.image_url = image_url;
 
     const result = id
       ? await db.from("products").update(row).eq("id", id)
@@ -431,31 +356,30 @@
 
     msg("#product-message", "Producto guardado correctamente.");
 
-    form.reset();
-    form.elements.id.value = "";
-    form.elements.active.checked = true;
-    form.elements.sale_type.value = "unit";
-
+    f.reset();
+    f.elements.id.value = "";
+    f.elements.active.checked = true;
+    f.elements.sale_type.value = "unit";
     togglePriceFields();
+
     $("#form-title").textContent = "Agregar producto";
 
     await loadInventory();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    $("#login-form").onsubmit = async event => {
-      event.preventDefault();
+    $("#login-form").onsubmit = async e => {
+      e.preventDefault();
       if (!db) return;
 
-      const form = new FormData(event.target);
+      const f = new FormData(e.target);
 
       const { error } = await db.auth.signInWithPassword({
-        email: form.get("email"),
-        password: form.get("password")
+        email: f.get("email"),
+        password: f.get("password")
       });
 
-      msg("#login-message",
-        error ? "No se pudo ingresar. Revisá tus datos." : "");
+      msg("#login-message", error ? "No se pudo ingresar. Revisá tus datos." : "");
 
       if (!error) showDashboard();
     };
@@ -466,15 +390,13 @@
     };
 
     $("#product-form").onsubmit = saveProduct;
+
     $("#sale-type").addEventListener("change", togglePriceFields);
 
     $("#reset-form").onclick = () => {
-      const form = $("#product-form");
-      form.reset();
-      form.elements.id.value = "";
-      form.elements.sale_type.value = "unit";
-      form.elements.active.checked = true;
-
+      $("#product-form").reset();
+      $("#product-form").elements.id.value = "";
+      $("#product-form").elements.sale_type.value = "unit";
       togglePriceFields();
       $("#form-title").textContent = "Agregar producto";
       msg("#product-message", "");
