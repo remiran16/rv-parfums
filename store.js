@@ -1,4 +1,3 @@
-
 const { createClient } = window.supabase;
 
 const supabaseClient = createClient(
@@ -13,17 +12,18 @@ let cart = [];
 let currentProduct = null;
 let selectedSize = null;
 let modalQuantity = 1;
+
 let featuredProducts = [];
 let featuredIndex = 0;
 let featuredTimer = null;
 
-const $ = (selector) => document.querySelector(selector);
+const $ = selector => document.querySelector(selector);
 
-const money = (value) =>
+const money = value =>
   `${window.STORE_CONFIG.CURRENCY} ${Number(value || 0).toLocaleString("es-PY")}`;
 
 function escapeHTML(value = "") {
-  return String(value).replace(/[&<>"']/g, (char) => ({
+  return String(value).replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -35,21 +35,25 @@ function escapeHTML(value = "") {
 function showToast(message) {
   const toast = $("#toast");
   if (!toast) return;
+
   toast.textContent = message;
   toast.classList.add("show");
+
   clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove("show"), 2500);
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2500);
 }
 
-// ------------------------------
-// CARGAR PRODUCTOS Y DESTACADOS
-// ------------------------------
+// --------------------------------
+// CARGAR PRODUCTOS
+// --------------------------------
 
 async function loadProducts() {
   const grid = $("#product-grid");
   if (!grid) return;
 
-  grid.innerHTML = "<p>Cargando productos...</p>";
+  grid.innerHTML = '<p class="loading">Cargando productos...</p>';
 
   const { data, error } = await supabaseClient
     .from("products")
@@ -59,14 +63,15 @@ async function loadProducts() {
 
   if (error) {
     console.error("Error cargando productos:", error);
-    grid.innerHTML = "<p>No se pudieron cargar los productos.</p>";
+    grid.innerHTML = '<p class="notice">No se pudieron cargar los productos.</p>';
     return;
   }
 
   products = data || [];
+
   renderProducts();
   updateCategories();
-  renderFeatured();
+  prepareFeatured();
 }
 
 function getProductPrice(product) {
@@ -76,6 +81,10 @@ function getProductPrice(product) {
   return Number(product.price || 0);
 }
 
+// --------------------------------
+// CATÁLOGO Y CATEGORÍAS
+// --------------------------------
+
 function renderProducts() {
   const grid = $("#product-grid");
   if (!grid) return;
@@ -83,23 +92,23 @@ function renderProducts() {
   const search = ($("#search")?.value || "").toLowerCase().trim();
   const category = $("#category-filter")?.value || "";
 
-  const filtered = products.filter((product) => {
-    const matchesSearch = [
+  const filtered = products.filter(product => {
+    const text = [
       product.name,
       product.brand,
       product.description
-    ].join(" ").toLowerCase().includes(search);
+    ].join(" ").toLowerCase();
 
-    const matchesCategory = !category || product.category === category;
-    return matchesSearch && matchesCategory;
+    return text.includes(search) &&
+      (!category || product.category === category);
   });
 
   if (!filtered.length) {
-    grid.innerHTML = "<p>No se encontraron productos.</p>";
+    grid.innerHTML = '<p class="notice">No se encontraron productos.</p>';
     return;
   }
 
-  grid.innerHTML = filtered.map((product) => {
+  grid.innerHTML = filtered.map(product => {
     const price = getProductPrice(product);
     const stock = Number(product.stock || 0);
     const priceText = product.sale_type === "ml"
@@ -110,11 +119,12 @@ function renderProducts() {
       "https://placehold.co/600x600?text=RV+Parfums";
 
     return `
-      <article class="product-card" data-open-product="${product.id}"
-        role="button" tabindex="0"
-        aria-label="Ver ${escapeHTML(product.name)}">
+      <article class="product-card"
+        data-open-product="${escapeHTML(product.id)}"
+        role="button" tabindex="0">
         <div class="product-card-image">
-          <img src="${escapeHTML(image)}" alt="${escapeHTML(product.name)}" loading="lazy">
+          <img src="${escapeHTML(image)}"
+            alt="${escapeHTML(product.name)}" loading="lazy">
           ${stock <= 0 ? '<span class="stock-badge">Agotado</span>' : ""}
         </div>
         <div class="product-card-info">
@@ -135,39 +145,53 @@ function updateCategories() {
 
   const currentValue = select.value;
   const categories = [...new Set(
-    products.map((product) => product.category).filter(Boolean)
-  )];
+    products.map(product => product.category).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, "es"));
 
   select.innerHTML =
     '<option value="">Todas las categorías</option>' +
-    categories.map((category) =>
+    categories.map(category =>
       `<option value="${escapeHTML(category)}">${escapeHTML(category)}</option>`
     ).join("");
 
-  if (categories.includes(currentValue)) select.value = currentValue;
+  if (categories.includes(currentValue)) {
+    select.value = currentValue;
+  }
 }
 
-// ------------------------------
+// --------------------------------
 // CARRUSEL DE DESTACADOS
-// ------------------------------
+// --------------------------------
+
+function prepareFeatured() {
+  featuredProducts = products.filter(product =>
+    product.featured === true && product.active === true
+  ).slice(0, 6);
+
+  featuredIndex = 0;
+  renderFeatured();
+}
+
+function visibleFeaturedCount() {
+  if (window.innerWidth <= 650) return 1;
+  if (window.innerWidth <= 950) return 2;
+  return 3;
+}
 
 function renderFeatured() {
   const section = $("#destacados");
   const track = $("#featured-track");
-  if (!section || !track) return;
+  const dots = $("#featured-dots");
 
-  featuredProducts = products
-    .filter(product => product.featured)
-    .slice(0, 6);
+  if (!section || !track || !dots) return;
 
   if (!featuredProducts.length) {
     section.hidden = true;
-    stopFeaturedAutoplay();
+    stopFeaturedTimer();
     return;
   }
 
   section.hidden = false;
-  featuredIndex = 0;
 
   track.innerHTML = featuredProducts.map(product => {
     const image = product.image_url ||
@@ -178,140 +202,140 @@ function renderFeatured() {
       : money(getProductPrice(product));
 
     return `
-      <article class="featured-card" data-featured-product="${product.id}" tabindex="0" role="button">
+      <article class="featured-card"
+        data-open-product="${escapeHTML(product.id)}"
+        role="button" tabindex="0">
         <div class="featured-card-image">
-          <img src="${escapeHTML(image)}" alt="${escapeHTML(product.name)}" loading="lazy">
+          <img src="${escapeHTML(image)}"
+            alt="${escapeHTML(product.name)}" loading="lazy">
         </div>
         <div class="featured-card-info">
           <p class="product-brand">${escapeHTML(product.brand || "RV PARFUMS")}</p>
           <h3>${escapeHTML(product.name)}</h3>
           <strong>${price}</strong>
-          <span>VER FRAGANCIA →</span>
+          <span>DESCUBRIR FRAGANCIA ↗</span>
         </div>
       </article>
     `;
   }).join("");
 
-  renderFeaturedDots();
+  const maxIndex = Math.max(
+    0,
+    featuredProducts.length - visibleFeaturedCount()
+  );
+
+  featuredIndex = Math.min(featuredIndex, maxIndex);
+
+  dots.innerHTML = Array.from({ length: maxIndex + 1 }, (_, index) =>
+    `<button type="button"
+      class="featured-dot ${index === featuredIndex ? "active" : ""}"
+      data-featured-dot="${index}"
+      aria-label="Ir a la posición ${index + 1}"></button>`
+  ).join("");
+
   updateFeaturedPosition();
-  startFeaturedAutoplay();
-}
-
-function getFeaturedVisibleCount() {
-  return window.innerWidth <= 650 ? 1 : 3;
-}
-
-function getFeaturedMaxIndex() {
-  return Math.max(0, featuredProducts.length - getFeaturedVisibleCount());
+  startFeaturedTimer();
 }
 
 function updateFeaturedPosition() {
   const track = $("#featured-track");
-  if (!track) return;
-
-  featuredIndex = Math.min(featuredIndex, getFeaturedMaxIndex());
-  const visible = getFeaturedVisibleCount();
-  const gap = 18;
-  const cardWidth = (100 / visible);
-
-  track.style.transform = `translateX(calc(-${featuredIndex * cardWidth}% - ${featuredIndex * gap / visible}px))`;
-
-  $("#featured-prev")?.toggleAttribute("disabled", featuredIndex <= 0);
-  $("#featured-next")?.toggleAttribute("disabled", featuredIndex >= getFeaturedMaxIndex());
-
   const dots = $("#featured-dots");
-  if (dots) {
-    dots.querySelectorAll("button").forEach((dot, index) => {
-      dot.classList.toggle("active", index === featuredIndex);
-    });
-  }
-}
+  if (!track || !dots) return;
 
-function renderFeaturedDots() {
-  const dots = $("#featured-dots");
-  if (!dots) return;
+  const count = visibleFeaturedCount();
+  const cardWidth = 100 / count;
 
-  const total = getFeaturedMaxIndex() + 1;
+  track.style.transform = `translateX(-${featuredIndex * cardWidth}%)`;
 
-  dots.innerHTML = total > 1
-    ? Array.from({ length: total }, (_, index) =>
-        `<button type="button" data-featured-dot="${index}" aria-label="Ir al grupo ${index + 1}" class="${index === featuredIndex ? "active" : ""}"></button>`
-      ).join("")
-    : "";
+  dots.querySelectorAll(".featured-dot").forEach((dot, index) => {
+    dot.classList.toggle("active", index === featuredIndex);
+  });
 }
 
 function moveFeatured(direction) {
-  const max = getFeaturedMaxIndex();
-  if (max <= 0) return;
+  const maxIndex = Math.max(
+    0,
+    featuredProducts.length - visibleFeaturedCount()
+  );
+
+  if (maxIndex <= 0) return;
 
   featuredIndex += direction;
 
-  if (featuredIndex > max) featuredIndex = 0;
-  if (featuredIndex < 0) featuredIndex = max;
+  if (featuredIndex > maxIndex) featuredIndex = 0;
+  if (featuredIndex < 0) featuredIndex = maxIndex;
 
   updateFeaturedPosition();
 }
 
-function startFeaturedAutoplay() {
-  stopFeaturedAutoplay();
-  if (featuredProducts.length <= getFeaturedVisibleCount()) return;
+function startFeaturedTimer() {
+  stopFeaturedTimer();
+
+  if (featuredProducts.length <= visibleFeaturedCount()) return;
 
   featuredTimer = setInterval(() => {
     moveFeatured(1);
-  }, 3500);
+  }, 4500);
 }
 
-function stopFeaturedAutoplay() {
+function stopFeaturedTimer() {
   if (featuredTimer) {
     clearInterval(featuredTimer);
     featuredTimer = null;
   }
 }
 
-$("#featured-next")?.addEventListener("click", () => {
-  moveFeatured(1);
-  startFeaturedAutoplay();
-});
-
 $("#featured-prev")?.addEventListener("click", () => {
   moveFeatured(-1);
-  startFeaturedAutoplay();
+  startFeaturedTimer();
+});
+
+$("#featured-next")?.addEventListener("click", () => {
+  moveFeatured(1);
+  startFeaturedTimer();
 });
 
 $("#featured-dots")?.addEventListener("click", event => {
-  const dot = event.target.closest("[data-featured-dot]");
-  if (!dot) return;
-  featuredIndex = Number(dot.dataset.featuredDot);
+  const button = event.target.closest("[data-featured-dot]");
+  if (!button) return;
+
+  featuredIndex = Number(button.dataset.featuredDot);
   updateFeaturedPosition();
-  startFeaturedAutoplay();
+  startFeaturedTimer();
 });
 
 $("#featured-track")?.addEventListener("click", event => {
-  const card = event.target.closest("[data-featured-product]");
-  if (card) openProduct(card.dataset.featuredProduct);
+  const card = event.target.closest("[data-open-product]");
+  if (card) openProduct(card.dataset.openProduct);
 });
 
 $("#featured-track")?.addEventListener("keydown", event => {
   if (
     (event.key === "Enter" || event.key === " ") &&
-    event.target.matches("[data-featured-product]")
+    event.target.matches("[data-open-product]")
   ) {
     event.preventDefault();
-    openProduct(event.target.dataset.featuredProduct);
+    openProduct(event.target.dataset.openProduct);
   }
 });
 
-$("#featured-track")?.addEventListener("touchstart", stopFeaturedAutoplay, { passive: true });
-$("#featured-track")?.addEventListener("touchend", startFeaturedAutoplay, { passive: true });
+$("#featured-viewport")?.addEventListener("mouseenter", stopFeaturedTimer);
+$("#featured-viewport")?.addEventListener("mouseleave", startFeaturedTimer);
+$("#featured-viewport")?.addEventListener("touchstart", stopFeaturedTimer, { passive: true });
+$("#featured-viewport")?.addEventListener("touchend", startFeaturedTimer, { passive: true });
 
+let resizeTimer;
 window.addEventListener("resize", () => {
-  renderFeaturedDots();
-  updateFeaturedPosition();
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    featuredIndex = 0;
+    renderFeatured();
+  }, 200);
 });
 
-// ------------------------------
+// --------------------------------
 // VENTANA DE DETALLES
-// ------------------------------
+// --------------------------------
 
 function openProduct(id) {
   currentProduct = products.find(
@@ -341,6 +365,7 @@ function openProduct(id) {
   $("#product-modal")?.classList.add("open");
   $("#product-overlay")?.setAttribute("aria-hidden", "false");
   $("#product-modal")?.setAttribute("aria-hidden", "false");
+
   document.body.classList.add("modal-open");
 }
 
@@ -360,7 +385,9 @@ function renderModalOptions() {
 
   if (price5 > 0) {
     options.push(`
-      <button type="button" class="modal-size-option selected" data-modal-size="5">
+      <button type="button"
+        class="modal-size-option selected"
+        data-modal-size="5">
         <span>5 ml</span><strong>${money(price5)}</strong>
       </button>
     `);
@@ -368,7 +395,9 @@ function renderModalOptions() {
 
   if (price10 > 0) {
     options.push(`
-      <button type="button" class="modal-size-option" data-modal-size="10">
+      <button type="button"
+        class="modal-size-option"
+        data-modal-size="10">
         <span>10 ml</span><strong>${money(price10)}</strong>
       </button>
     `);
@@ -384,8 +413,15 @@ function renderModalOptions() {
 
 function getModalPrice() {
   if (!currentProduct) return 0;
-  if (currentProduct.sale_type !== "ml") return Number(currentProduct.price || 0);
-  if (selectedSize === "10 ml") return Number(currentProduct.price_10ml || 0);
+
+  if (currentProduct.sale_type !== "ml") {
+    return Number(currentProduct.price || 0);
+  }
+
+  if (selectedSize === "10 ml") {
+    return Number(currentProduct.price_10ml || 0);
+  }
+
   return Number(currentProduct.price_5ml || currentProduct.price || 0);
 }
 
@@ -398,10 +434,12 @@ function updateModalPrice() {
   const addButton = $("#modal-add-to-cart");
   const stock = Number(currentProduct.stock || 0);
 
-  if (addButton) addButton.disabled = stock <= 0 || getModalPrice() <= 0;
+  if (addButton) {
+    addButton.disabled = stock <= 0 || getModalPrice() <= 0;
+  }
 
-  const message = $("#modal-product-message");
-  if (message) message.textContent = stock <= 0 ? "Este producto está agotado." : "";
+  $("#modal-product-message").textContent =
+    stock <= 0 ? "Este producto está agotado." : "";
 }
 
 function closeProductModal() {
@@ -409,6 +447,7 @@ function closeProductModal() {
   $("#product-modal")?.classList.remove("open");
   $("#product-overlay")?.setAttribute("aria-hidden", "true");
   $("#product-modal")?.setAttribute("aria-hidden", "true");
+
   document.body.classList.remove("modal-open");
   currentProduct = null;
 }
@@ -448,6 +487,7 @@ $("#modal-qty-minus")?.addEventListener("click", () => {
 
 $("#modal-qty-plus")?.addEventListener("click", () => {
   if (!currentProduct) return;
+
   const stock = Number(currentProduct.stock || 0);
 
   if (modalQuantity < stock) {
@@ -463,13 +503,9 @@ $("#modal-add-to-cart")?.addEventListener("click", () => {
 $("#close-product-modal")?.addEventListener("click", closeProductModal);
 $("#product-overlay")?.addEventListener("click", closeProductModal);
 
-document.addEventListener("keydown", event => {
-  if (event.key === "Escape") closeProductModal();
-});
-
-// ------------------------------
+// --------------------------------
 // CARRITO
-// ------------------------------
+// --------------------------------
 
 function addCurrentProductToCart() {
   const product = currentProduct;
@@ -516,7 +552,7 @@ function renderCart() {
   if (!container) return;
 
   if (!cart.length) {
-    container.innerHTML = "<p>Tu carrito está vacío.</p>";
+    container.innerHTML = '<p class="muted">Tu carrito está vacío.</p>';
   } else {
     container.innerHTML = cart.map(item => `
       <div class="cart-item">
@@ -527,21 +563,24 @@ function renderCart() {
           <strong>${money(item.price * item.qty)}</strong>
         </div>
         <div class="qty">
-          <button type="button" data-cart-minus="${escapeHTML(item.key)}" aria-label="Disminuir cantidad">−</button>
+          <button type="button" data-cart-minus="${escapeHTML(item.key)}">−</button>
           <span>${item.qty}</span>
-          <button type="button" data-cart-plus="${escapeHTML(item.key)}" aria-label="Aumentar cantidad">+</button>
+          <button type="button" data-cart-plus="${escapeHTML(item.key)}">+</button>
         </div>
-        <button type="button" class="cart-remove" data-cart-remove="${escapeHTML(item.key)}">Eliminar</button>
+        <button type="button" class="cart-remove"
+          data-cart-remove="${escapeHTML(item.key)}">Eliminar</button>
       </div>
     `).join("");
   }
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.qty, 0
+  );
 
-  if ($("#cart-total")) $("#cart-total").textContent = money(total);
-  if ($("#cart-count")) {
-    $("#cart-count").textContent = cart.reduce((sum, item) => sum + item.qty, 0);
-  }
+  $("#cart-total").textContent = money(total);
+  $("#cart-count").textContent = cart.reduce(
+    (sum, item) => sum + item.qty, 0
+  );
 }
 
 $("#cart-items")?.addEventListener("click", event => {
@@ -553,14 +592,19 @@ $("#cart-items")?.addEventListener("click", event => {
     const item = cart.find(entry => entry.key === minus.dataset.cartMinus);
     if (item) {
       item.qty--;
-      if (item.qty <= 0) cart = cart.filter(entry => entry.key !== item.key);
+      if (item.qty <= 0) {
+        cart = cart.filter(entry => entry.key !== item.key);
+      }
     }
   }
 
   if (plus) {
     const item = cart.find(entry => entry.key === plus.dataset.cartPlus);
-    if (item && item.qty < item.stock) item.qty++;
-    else if (item) showToast("No hay más unidades disponibles.");
+    if (item && item.qty < item.stock) {
+      item.qty++;
+    } else if (item) {
+      showToast("No hay más unidades disponibles.");
+    }
   }
 
   if (remove) {
@@ -569,10 +613,6 @@ $("#cart-items")?.addEventListener("click", event => {
 
   renderCart();
 });
-
-// ------------------------------
-// ABRIR Y CERRAR CARRITO
-// ------------------------------
 
 function openCart() {
   $("#cart-panel")?.classList.add("open");
@@ -588,16 +628,12 @@ $("#open-cart")?.addEventListener("click", openCart);
 $("#close-cart")?.addEventListener("click", closeCart);
 $("#cart-overlay")?.addEventListener("click", closeCart);
 
-// ------------------------------
-// BUSCADOR Y FILTROS
-// ------------------------------
-
 $("#search")?.addEventListener("input", renderProducts);
 $("#category-filter")?.addEventListener("change", renderProducts);
 
-// ------------------------------
+// --------------------------------
 // FINALIZAR COMPRA
-// ------------------------------
+// --------------------------------
 
 $("#checkout-form")?.addEventListener("submit", async event => {
   event.preventDefault();
@@ -610,28 +646,18 @@ $("#checkout-form")?.addEventListener("submit", async event => {
   const form = event.currentTarget;
   const formData = new FormData(form);
 
-  const customerName = String(
-    formData.get("customer") ||
-    formData.get("customer_name") ||
-    formData.get("name") ||
-    ""
-  ).trim();
-
-  const phone = String(formData.get("phone") || "").trim();
-  const address = String(formData.get("address") || "").trim();
-
-  const notes = String(
-    formData.get("message") ||
-    formData.get("notes") ||
-    ""
-  ).trim();
+  // Coincide con los nombres del formulario actual.
+  const customerName = String(formData.get("customer") || "").trim();
+  const notes = String(formData.get("message") || "").trim();
 
   if (!customerName) {
-    showToast("Por favor, escribí tu nombre completo.");
+    showToast("Ingresá tu nombre.");
     return;
   }
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.qty, 0
+  );
 
   const orderItems = cart.map(item => ({
     id: item.id,
@@ -643,8 +669,8 @@ $("#checkout-form")?.addEventListener("submit", async event => {
 
   const order = {
     customer_name: customerName,
-    phone,
-    address,
+    phone: "",
+    address: "",
     notes,
     items: orderItems,
     total,
@@ -658,50 +684,67 @@ $("#checkout-form")?.addEventListener("submit", async event => {
     submitButton.textContent = "PROCESANDO...";
   }
 
-  try {
-    const { data, error } = await supabaseClient
-      .from("orders")
-      .insert([order])
-      .select();
+  const { error } = await supabaseClient
+    .from("orders")
+    .insert([order]);
 
-    if (error) {
-      console.error("Error guardando pedido:", error);
+  if (error) {
+    console.error("Error guardando pedido:", error);
+    showToast("No se pudo registrar el pedido. Intentá nuevamente.");
 
-      const errorDetails = [
-        `Mensaje: ${error.message || "Sin mensaje"}`,
-        error.details ? `Detalles: ${error.details}` : "",
-        error.hint ? `Pista: ${error.hint}` : "",
-        error.code ? `Código: ${error.code}` : ""
-      ].filter(Boolean).join("\n");
-
-      alert(
-        "RV PARFUMS - ERROR AL REGISTRAR EL PEDIDO\n\n" +
-        errorDetails +
-        "\n\nEnviame una captura de este mensaje para solucionarlo."
-      );
-
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
-      }
-      return;
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
     }
+    return;
+  }
 
-    console.log("Pedido registrado correctamente:", data);
+  let message = `Hola, quiero realizar un pedido en RV Parfums.\n\n`;
+  message += `Cliente: ${customerName}\n\n`;
+  message += `PRODUCTOS:\n`;
 
-    let message = "Hola, quiero realizar este pedido en RV Parfums:\n\n";
+  cart.forEach(item => {
+    message += `- ${item.name}`;
+    if (item.size) message += ` (${item.size})`;
+    message += ` x${item.qty} = ${money(item.price * item.qty)}\n`;
+  });
 
-    cart.forEach(item => {
-      message += `• ${item.name}`;
-      if (item.size) message += ` (${item.size})`;
-      message += ` x${item.qty} — ${money(item.price * item.qty)}\n`;
-    });
+  message += `\nTOTAL: ${money(total)}`;
 
-    message += `\nTotal: ${money(total)}`;
-    message += `\nNombre: ${customerName}.`;
-    if (phone) message += `\nTeléfono: ${phone}`;
-    if (address) message += `\nDirección: ${address}`;
-    if (notes) message += `\nMensaje: ${notes}`;
+  if (notes) {
+    message += `\n\nObservaciones: ${notes}`;
+  }
 
-    const whatsappURL =
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  const whatsappURL =
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
+  cart = [];
+  renderCart();
+  form.reset();
+  closeCart();
+
+  if (submitButton) {
+    submitButton.disabled = false;
+    submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
+  }
+
+  window.location.href = whatsappURL;
+});
+
+// --------------------------------
+// INICIO
+// --------------------------------
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    closeProductModal();
+    closeCart();
+  }
+});
+
+if ($("#year")) {
+  $("#year").textContent = new Date().getFullYear();
+}
+
+renderCart();
+loadProducts();
