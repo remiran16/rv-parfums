@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="es">
 <head>
@@ -109,6 +110,97 @@
         </div>
 
       </div>
+
+      <!-- GESTIÓN INDEPENDIENTE DE LOS MÁS VENDIDOS -->
+      <section class="admin-card" id="bestsellers-admin">
+
+        <div class="card-title">
+
+          <div>
+            <h2>Los más vendidos</h2>
+            <p class="muted">
+              Elegí hasta seis productos para mostrar en el carrusel de la tienda.
+            </p>
+          </div>
+
+          <span class="eyebrow">DESTACADOS</span>
+
+        </div>
+
+        <div class="bestsellers-admin-grid">
+
+          <label>
+            Posición 1
+            <select id="bestseller-slot-1">
+              <option value="">Espacio vacío</option>
+            </select>
+          </label>
+
+          <label>
+            Posición 2
+            <select id="bestseller-slot-2">
+              <option value="">Espacio vacío</option>
+            </select>
+          </label>
+
+          <label>
+            Posición 3
+            <select id="bestseller-slot-3">
+              <option value="">Espacio vacío</option>
+            </select>
+          </label>
+
+          <label>
+            Posición 4
+            <select id="bestseller-slot-4">
+              <option value="">Espacio vacío</option>
+            </select>
+          </label>
+
+          <label>
+            Posición 5
+            <select id="bestseller-slot-5">
+              <option value="">Espacio vacío</option>
+            </select>
+          </label>
+
+          <label>
+            Posición 6
+            <select id="bestseller-slot-6">
+              <option value="">Espacio vacío</option>
+            </select>
+          </label>
+
+        </div>
+
+        <p class="muted">
+          Podés dejar cualquier posición vacía. Los espacios sin productos
+          seguirán apareciendo en el carrusel de la tienda.
+        </p>
+
+        <div class="form-row">
+
+          <button
+            type="button"
+            class="button button-gold"
+            id="save-bestsellers"
+          >
+            GUARDAR SELECCIÓN
+          </button>
+
+          <button
+            type="button"
+            class="button button-outline"
+            id="clear-bestsellers"
+          >
+            LIMPIAR SELECCIÓN
+          </button>
+
+        </div>
+
+        <p class="form-message" id="bestsellers-message"></p>
+
+      </section>
 
       <div class="admin-columns">
 
