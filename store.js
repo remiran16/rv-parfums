@@ -560,14 +560,24 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   const form = event.currentTarget;
   const formData = new FormData(form);
 
-  const customerName =
+  // DATOS DEL CLIENTE
+  const customerName = String(
+    formData.get("customer") ||
     formData.get("customer_name") ||
     formData.get("name") ||
-    "";
+    ""
+  ).trim();
 
-  const phone = formData.get("phone") || "";
-  const address = formData.get("address") || "";
-  const notes = formData.get("notes") || "";
+  const notes = String(
+    formData.get("message") ||
+    formData.get("notes") ||
+    ""
+  ).trim();
+
+  if (!customerName) {
+    showToast("Por favor, escribí tu nombre completo.");
+    return;
+  }
 
   const total = cart.reduce(
     (sum, item) => sum + item.price * item.qty,
@@ -582,17 +592,17 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     quantity: item.qty
   }));
 
+  // PEDIDO PARA SUPABASE
   const order = {
     customer_name: customerName,
-    phone,
-    address,
-    notes,
+    notes: notes,
     items: orderItems,
     total,
     status: "Pendiente"
   };
 
   const submitButton = form.querySelector('[type="submit"]');
+
   if (submitButton) {
     submitButton.disabled = true;
     submitButton.textContent = "PROCESANDO...";
@@ -608,28 +618,30 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
 
     if (submitButton) {
       submitButton.disabled = false;
-      submitButton.textContent = "FINALIZAR COMPRA";
+      submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
     }
 
     return;
   }
 
-  let message = `Hola, quiero realizar un pedido en RV Parfums.\n\n`;
-  message += `Cliente: ${customerName}\n`;
-  message += `Teléfono: ${phone}\n`;
-  message += `Dirección: ${address}\n\n`;
-  message += `PRODUCTOS:\n`;
+  // MENSAJE PARA WHATSAPP
+  let message = `Hola, quiero realizar este pedido en RV Parfums:\n\n`;
 
   cart.forEach((item) => {
-    message += `- ${item.name}`;
-    if (item.size) message += ` (${item.size})`;
-    message += ` x${item.qty} = ${money(item.price * item.qty)}\n`;
+    message += `• ${item.name}`;
+
+    if (item.size) {
+      message += ` (${item.size})`;
+    }
+
+    message += ` x${item.qty} — ${money(item.price * item.qty)}\n`;
   });
 
-  message += `\nTOTAL: ${money(total)}`;
+  message += `\nTotal: ${money(total)}`;
+  message += `\nNombre: ${customerName}.`;
 
   if (notes) {
-    message += `\n\nObservaciones: ${notes}`;
+    message += `\nMensaje: ${notes}`;
   }
 
   const whatsappURL =
@@ -642,7 +654,7 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
 
   if (submitButton) {
     submitButton.disabled = false;
-    submitButton.textContent = "FINALIZAR COMPRA";
+    submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
   }
 
   window.location.href = whatsappURL;
@@ -658,4 +670,3 @@ if ($("#year")) {
 
 renderCart();
 loadProducts();
-              
