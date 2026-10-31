@@ -15,7 +15,7 @@ let selectedSize = null;
 let modalQuantity = 1;
 
 // LOS MÁS VENDIDOS
-let bestSellerProducts = [];
+let bestSellerProducts = Array(6).fill(null);
 let bestSellerPosition = 0;
 let bestSellerTimer = null;
 
@@ -55,27 +55,29 @@ async function loadProducts() {
   const grid = $("#product-grid");
   if (!grid) return;
 
-  grid.innerHTML = "<p>Cargando productos...</p>";
+  grid.innerHTML = '<p class="loading">Cargando productos...</p>';
 
-  const { data, error } = await supabaseClient
-    .from("products")
-    .select("*")
-    .eq("active", true)
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await supabaseClient
+      .from("products")
+      .select("*")
+      .eq("active", true)
+      .order("created_at", { ascending: false });
 
-  if (error) {
+    if (error) throw error;
+
+    products = data || [];
+
+    renderProducts();
+    updateCategories();
+
+    await loadBestSellers();
+
+  } catch (error) {
     console.error("Error cargando productos:", error);
-    grid.innerHTML = "<p>No se pudieron cargar los productos.</p>";
-    return;
+    grid.innerHTML =
+      '<p class="notice">No se pudieron cargar los productos.</p>';
   }
-
-  products = data || [];
-
-  renderProducts();
-  updateCategories();
-
-  // Cargar el carrusel después de tener los productos activos.
-  await loadBestSellers();
 }
 
 function getProductPrice(product) {
@@ -107,7 +109,8 @@ function renderProducts() {
   });
 
   if (!filtered.length) {
-    grid.innerHTML = "<p>No se encontraron productos.</p>";
+    grid.innerHTML =
+      '<p class="notice">No se encontraron productos.</p>';
     return;
   }
 
@@ -142,12 +145,18 @@ function renderProducts() {
         </div>
 
         <div class="product-card-info">
-          <p class="product-brand">${escapeHTML(product.brand || "RV PARFUMS")}</p>
+          <p class="product-brand">
+            ${escapeHTML(product.brand || "RV PARFUMS")}
+          </p>
+
           <h3>${escapeHTML(product.name)}</h3>
+
           <p class="product-description">
             ${escapeHTML(product.description || "")}
           </p>
+
           <strong class="product-price">${priceText}</strong>
+
           <span class="product-view-link">Ver producto →</span>
         </div>
       </article>
@@ -182,162 +191,211 @@ function updateCategories() {
 
 async function loadBestSellers() {
   const track = $("#bestsellers-track");
-
   if (!track) return;
 
-  const { data, error } = await supabaseClient
-    .from("bestsellers")
-    .select("slot, product_id")
-    .order("slot", { ascending: true });
+  try {
+    const { data, error } = await supabaseClient
+      .from("bestsellers")
+      .select("slot, product_id")
+      .order("slot", { ascending: true });
 
-  if (error) {
+    if (error) throw error;
+
+    const slots = data || [];
+
+    bestSellerProducts = Array.from({ length: 6 }, (_, index) => {
+      const slot = slots.find(
+        (item) => Number(item.slot) === index + 1
+      );
+
+      if (!slot || !slot.product_id) return null;
+
+      return products.find(
+        (product) =>
+          String(product.id) === String(slot.product_id) &&
+          product.active === true
+      ) || null;
+    });
+
+  } catch (error) {
     console.error("Error cargando los más vendidos:", error);
-
-    bestSellerProducts = [];
-    renderBestSellers();
-    return;
+    bestSellerProducts = Array(6).fill(null);
   }
 
-  const slots = data || [];
-
-  // Mantener exactamente seis posiciones.
-  bestSellerProducts = Array.from({ length: 6 }, (_, index) => {
-    const slot = slots.find(
-      (item) => Number(item.slot) === index + 1
-    );
-
-    if (!slot || !slot.product_id) return null;
-
-    // Solo mostrar productos activos que todavía existan.
-    const product = products.find(
-      (item) =>
-        String(item.id) === String(slot.product_id) &&
-        item.active === true
-    );
-
-    return product || null;
-  });
-
   bestSellerPosition = 0;
-
   renderBestSellers();
   startBestSellerCarousel();
+}
+
+function createBestSellerCard(product, index, clone = false) {
+  if (!product) {
+    return `
+      <article
+        class="bestseller-card is-empty"
+        aria-label="Espacio disponible"
+        data-bestseller-slot="${index + 1}"
+      >
+        <div class="bestseller-empty-content">
+          <span class="bestseller-empty-mark">RV</span>
+          <span class="bestseller-empty-label">PRÓXIMAMENTE</span>
+        </div>
+      </article>
+    `;
+  }
+
+  const image = product.image_url ||
+    "https://placehold.co/600x600?text=RV+Parfums";
+
+  const priceText = product.sale_type === "ml"
+    ? `Desde ${money(getProductPrice(product))}`
+    : money(getProductPrice(product));
+
+  const stock = Number(product.stock || 0);
+
+  return `
+    <article
+      class="product-card bestseller-card"
+      data-bestseller-product="${escapeHTML(product.id)}"
+      role="button"
+      tabindex="0"
+      aria-label="Ver ${escapeHTML(product.name)}"
+    >
+      <div class="product-card-image">
+        <img
+          src="${escapeHTML(image)}"
+          alt="${escapeHTML(product.name)}"
+          loading="lazy"
+        >
+        ${stock <= 0
+          ? '<span class="stock-badge">Agotado</span>'
+          : ""}
+      </div>
+
+      <div class="product-card-info">
+        <p class="product-brand">
+          ${escapeHTML(product.brand || "RV PARFUMS")}
+        </p>
+
+        <h3>${escapeHTML(product.name)}</h3>
+
+        <p class="product-description">
+          ${escapeHTML(product.description || "")}
+        </p>
+
+        <strong class="product-price">${priceText}</strong>
+
+        <span class="product-view-link">Ver producto →</span>
+      </div>
+    </article>
+  `;
 }
 
 function renderBestSellers() {
   const track = $("#bestsellers-track");
   if (!track) return;
 
-  // Se crean seis tarjetas, aunque no haya productos.
-  track.innerHTML = bestSellerProducts.map((product, index) => {
-    if (!product) {
-      return `
-        <article
-          class="bestseller-card is-empty"
-          aria-label="Espacio disponible"
-          data-bestseller-slot="${index + 1}"
-        >
-          <div class="bestseller-empty-content">
-            <span class="bestseller-empty-mark">RV</span>
-            <span class="bestseller-empty-label">PRÓXIMAMENTE</span>
-          </div>
-        </article>
-      `;
-    }
+  // Seis espacios originales y dos copias para el bucle continuo.
+  const originalCards = bestSellerProducts.map((product, index) =>
+    createBestSellerCard(product, index)
+  );
 
-    const image = product.image_url ||
-      "https://placehold.co/600x600?text=RV+Parfums";
+  const clonedCards = bestSellerProducts.slice(0, 2).map((product, index) =>
+    createBestSellerCard(product, index, true)
+  );
 
-    const priceText = product.sale_type === "ml"
-      ? `Desde ${money(getProductPrice(product))}`
-      : money(getProductPrice(product));
+  track.innerHTML = [...originalCards, ...clonedCards].join("");
 
-    const stock = Number(product.stock || 0);
-
-    return `
-      <article
-        class="product-card bestseller-card"
-        data-bestseller-product="${escapeHTML(product.id)}"
-        role="button"
-        tabindex="0"
-        aria-label="Ver ${escapeHTML(product.name)}"
-      >
-        <div class="product-card-image">
-          <img
-            src="${escapeHTML(image)}"
-            alt="${escapeHTML(product.name)}"
-            loading="lazy"
-          >
-          ${stock <= 0
-            ? '<span class="stock-badge">Agotado</span>'
-            : ""}
-        </div>
-
-        <div class="product-card-info">
-          <p class="product-brand">
-            ${escapeHTML(product.brand || "RV PARFUMS")}
-          </p>
-
-          <h3>${escapeHTML(product.name)}</h3>
-
-          <p class="product-description">
-            ${escapeHTML(product.description || "")}
-          </p>
-
-          <strong class="product-price">${priceText}</strong>
-
-          <span class="product-view-link">Ver producto →</span>
-        </div>
-      </article>
-    `;
-  }).join("");
-
+  bestSellerPosition = 0;
   updateBestSellerPosition();
   renderBestSellerDots();
+}
+
+function getBestSellerStep() {
+  const track = $("#bestsellers-track");
+  if (!track) return 0;
+
+  const firstCard = track.querySelector(".bestseller-card");
+  if (!firstCard) return 0;
+
+  const styles = window.getComputedStyle(track);
+  const gap = parseFloat(styles.columnGap || styles.gap) || 0;
+
+  return firstCard.getBoundingClientRect().width + gap;
 }
 
 function updateBestSellerPosition() {
   const track = $("#bestsellers-track");
   if (!track) return;
 
-  // Cada tarjeta ocupa el 50% del carrusel.
+  const step = getBestSellerStep();
+
   track.style.transform =
-    `translateX(-${bestSellerPosition * 50}%)`;
+    `translate3d(-${bestSellerPosition * step}px, 0, 0)`;
 }
 
 function renderBestSellerDots() {
   const dots = $("#bestsellers-dots");
   if (!dots) return;
 
+  const activeIndex = bestSellerPosition % 6;
+
   dots.innerHTML = Array.from({ length: 6 }, (_, index) => `
     <span
-      class="bestseller-dot ${index === bestSellerPosition ? "active" : ""}"
+      class="bestseller-dot ${index === activeIndex ? "active" : ""}"
     ></span>
   `).join("");
 }
 
 function moveBestSellerCarousel() {
   const track = $("#bestsellers-track");
+  if (!track) return;
 
-  if (!track || bestSellerProducts.length !== 6) return;
-
-  // Una posición hacia la izquierda.
-  bestSellerPosition = (bestSellerPosition + 1) % 6;
+  bestSellerPosition++;
 
   updateBestSellerPosition();
   renderBestSellerDots();
 }
 
+function resetBestSellerCarousel() {
+  const track = $("#bestsellers-track");
+  if (!track) return;
+
+  if (bestSellerPosition !== 6) return;
+
+  // Al llegar a la copia de los dos primeros espacios,
+  // vuelve al inicio sin que se note el salto.
+  track.style.transition = "none";
+
+  bestSellerPosition = 0;
+  updateBestSellerPosition();
+  renderBestSellerDots();
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      track.style.transition = "";
+    });
+  });
+}
+
+$("#bestsellers-track")?.addEventListener(
+  "transitionend",
+  (event) => {
+    if (
+      event.target === event.currentTarget &&
+      event.propertyName === "transform"
+    ) {
+      resetBestSellerCarousel();
+    }
+  }
+);
+
 function startBestSellerCarousel() {
   clearInterval(bestSellerTimer);
-
   bestSellerTimer = null;
 
   const track = $("#bestsellers-track");
-
   if (!track) return;
 
-  // Movimiento incluso cuando los seis espacios están vacíos.
   bestSellerTimer = setInterval(() => {
     if (!document.hidden) {
       moveBestSellerCarousel();
@@ -346,30 +404,26 @@ function startBestSellerCarousel() {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && $("#bestsellers-track")) {
-    // No reinicia el contador si ya está funcionando.
-    if (!bestSellerTimer) {
-      startBestSellerCarousel();
-    }
+  if (!document.hidden && $("#bestsellers-track") && !bestSellerTimer) {
+    startBestSellerCarousel();
   }
+});
+
+window.addEventListener("resize", () => {
+  updateBestSellerPosition();
 });
 
 $("#bestsellers-track")?.addEventListener("click", (event) => {
   const card = event.target.closest("[data-bestseller-product]");
-
   if (!card) return;
 
   openProduct(card.dataset.bestsellerProduct);
 });
 
 $("#bestsellers-track")?.addEventListener("keydown", (event) => {
-  if (
-    event.key !== "Enter" &&
-    event.key !== " "
-  ) return;
+  if (event.key !== "Enter" && event.key !== " ") return;
 
   const card = event.target.closest("[data-bestseller-product]");
-
   if (!card) return;
 
   event.preventDefault();
@@ -780,6 +834,7 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   }
 
   const form = event.currentTarget;
+  
   const formData = new FormData(form);
 
   const customerName = String(
@@ -818,11 +873,11 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
 
   const order = {
     customer_name: customerName,
-    phone: phone,
-    address: address,
-    notes: notes,
+    phone,
+    address,
+    notes,
     items: orderItems,
-    total: total,
+    total,
     status: "Pendiente"
   };
 
@@ -836,52 +891,46 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   try {
     const { error } = await supabaseClient
       .from("orders")
-      .in
-    const { error } = await supabaseClient
-  .from("orders")
-  .insert([order]);
+      .insert([order]);
 
-if (error) {
-  console.error("Error guardando el pedido:", error);
-  showToast("No se pudo registrar el pedido. Intentá nuevamente.");
-  return;
-}
+    if (error) throw error;
 
-const messageLines = [
-  `Hola, soy ${customerName}. Quiero realizar el siguiente pedido:`,
-  "",
-  ...orderItems.map((item) =>
-    `• ${item.name}${item.size ? ` (${item.size})` : ""} x${item.quantity} — ${money(item.price * item.quantity)}`
-  ),
-  "",
-  `TOTAL: ${money(total)}`,
-  "",
-  `Teléfono: ${phone || "No indicado"}`,
-  `Dirección: ${address || "No indicada"}`,
-  `Observaciones: ${notes || "Ninguna"}`
-];
+    const messageLines = [
+      `Hola, soy ${customerName}. Quiero realizar el siguiente pedido:`,
+      "",
+      ...orderItems.map((item) =>
+        `• ${item.name}${item.size ? ` (${item.size})` : ""} x${item.quantity} — ${money(item.price * item.quantity)}`
+      ),
+      "",
+      `TOTAL: ${money(total)}`,
+      "",
+      `Teléfono: ${phone || "No indicado"}`,
+      `Dirección: ${address || "No indicada"}`,
+      `Observaciones: ${notes || "Ninguna"}`
+    ];
 
-const whatsappURL =
-  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(messageLines.join("\n"))}`;
+    const whatsappURL =
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(messageLines.join("\n"))}`;
 
-cart = [];
-renderCart();
-form.reset();
+    cart = [];
+    renderCart();
+    form.reset();
 
-closeCart();
-showToast("Pedido registrado correctamente.");
+    closeCart();
+    showToast("Pedido registrado correctamente.");
 
-window.open(whatsappURL, "_blank");
+    window.open(whatsappURL, "_blank");
 
-} catch (error) {
-  console.error("Error inesperado:", error);
-  showToast("Ocurrió un error al procesar el pedido.");
-} finally {
-  if (submitButton) {
-    submitButton.disabled = false;
-    submitButton.textContent = "CONFIRMAR PEDIDO";
+  } catch (error) {
+    console.error("Error procesando el pedido:", error);
+    showToast("No se pudo registrar el pedido. Intentá nuevamente.");
+
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "CONFIRMAR PEDIDO";
+    }
   }
-}
 });
 
 // ------------------------------
