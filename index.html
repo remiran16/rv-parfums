@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -7,29 +6,24 @@
   <meta name="theme-color" content="#0b0b0b">
   <meta name="description" content="RV Parfums: selección exclusiva de fragancias.">
   <title>RV Parfums — Perfumería</title>
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script defer src="store.js"></script>
 </head>
-
 <body>
   <header class="site-header">
     <a class="brand" href="#">
       <span class="brand-mark">RV</span>
       <span><b>RV PARFUMS</b><small>PERFUMERÍA</small></span>
     </a>
-
     <nav>
       <a href="#catalogo">Catálogo</a>
       <a href="#nosotros">Nosotros</a>
     </nav>
-
     <button class="cart-trigger" id="open-cart" aria-label="Abrir carrito">
       <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="9" cy="21" r="1"/>
@@ -60,17 +54,17 @@
       <div class="featured-heading">
         <div>
           <p class="eyebrow">LA SELECCIÓN DE RV PARFUMS</p>
-          <h2>Más <em>vendidos</em></h2>
+          <h2>Nuestras <em>destacadas</em></h2>
         </div>
-        <span class="featured-note">FRAGANCIAS DESTACADAS</span>
+        <span class="featured-note">SELECCIÓN EXCLUSIVA</span>
       </div>
 
       <div class="featured-carousel">
-        <button class="featured-arrow featured-prev" id="featured-prev" type="button" aria-label="Productos anteriores">‹</button>
-        <div class="featured-viewport">
+        <button class="featured-arrow" id="featured-prev" type="button" aria-label="Productos anteriores">‹</button>
+        <div class="featured-viewport" id="featured-viewport">
           <div class="featured-track" id="featured-track"></div>
         </div>
-        <button class="featured-arrow featured-next" id="featured-next" type="button" aria-label="Productos siguientes">›</button>
+        <button class="featured-arrow" id="featured-next" type="button" aria-label="Productos siguientes">›</button>
       </div>
       <div class="featured-dots" id="featured-dots"></div>
     </section>
@@ -116,23 +110,19 @@
 
   <section class="product-modal" id="product-modal" role="dialog" aria-modal="true" aria-labelledby="modal-product-name" aria-hidden="true">
     <button type="button" class="icon-button product-modal-close" id="close-product-modal" aria-label="Cerrar producto">✕</button>
-
     <div class="product-modal-content">
       <div class="product-modal-image">
         <img id="modal-product-image" src="" alt="">
       </div>
-
       <div class="product-modal-info">
         <p class="eyebrow" id="modal-product-brand">RV PARFUMS</p>
         <h2 id="modal-product-name">Nombre del producto</h2>
         <p class="product-modal-description" id="modal-product-description"></p>
         <div id="modal-purchase-options"></div>
-
         <div class="product-modal-price">
           <span>Precio</span>
           <strong id="modal-product-price">Gs. 0</strong>
         </div>
-
         <div class="product-modal-quantity">
           <span>Cantidad</span>
           <div class="qty">
@@ -141,7 +131,6 @@
             <button type="button" id="modal-qty-plus" aria-label="Aumentar cantidad">+</button>
           </div>
         </div>
-
         <button type="button" class="button button-gold full" id="modal-add-to-cart">AGREGAR A MI CARRITO</button>
         <p class="form-message" id="modal-product-message"></p>
       </div>
