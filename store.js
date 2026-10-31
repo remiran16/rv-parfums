@@ -103,11 +103,10 @@ function renderProducts() {
   }
 
   grid.innerHTML = filtered.map((product) => {
-    const isMl = product.sale_type === "ml";
     const price = getProductPrice(product);
     const stock = Number(product.stock || 0);
 
-    const priceText = isMl
+    const priceText = product.sale_type === "ml"
       ? `Desde ${money(price)}`
       : money(price);
 
@@ -152,6 +151,7 @@ function updateCategories() {
   if (!select) return;
 
   const currentValue = select.value;
+
   const categories = [...new Set(
     products.map((product) => product.category).filter(Boolean)
   )];
@@ -186,10 +186,13 @@ function openProduct(id) {
     "https://placehold.co/600x600?text=RV+Parfums";
 
   $("#modal-product-image").alt = currentProduct.name || "";
+
   $("#modal-product-brand").textContent =
     currentProduct.brand || "RV PARFUMS";
 
-  $("#modal-product-name").textContent = currentProduct.name || "";
+  $("#modal-product-name").textContent =
+    currentProduct.name || "";
+
   $("#modal-product-description").textContent =
     currentProduct.description || "";
 
@@ -224,6 +227,7 @@ function renderModalOptions() {
   const price5 = Number(
     currentProduct.price_5ml || currentProduct.price || 0
   );
+
   const price10 = Number(currentProduct.price_10ml || 0);
 
   const options = [];
@@ -261,7 +265,9 @@ function renderModalOptions() {
     </div>
   `;
 
-  selectedSize = price5 > 0 ? "5 ml" : (price10 > 0 ? "10 ml" : null);
+  selectedSize = price5 > 0
+    ? "5 ml"
+    : (price10 > 0 ? "10 ml" : null);
 }
 
 function getModalPrice() {
@@ -294,6 +300,7 @@ function updateModalPrice() {
   }
 
   const message = $("#modal-product-message");
+
   if (message) {
     message.textContent = stock <= 0
       ? "Este producto está agotado."
@@ -362,7 +369,6 @@ $("#modal-qty-plus")?.addEventListener("click", () => {
 
 $("#modal-add-to-cart")?.addEventListener("click", () => {
   if (!currentProduct) return;
-
   addCurrentProductToCart();
 });
 
@@ -493,9 +499,13 @@ $("#cart-items")?.addEventListener("click", (event) => {
   const remove = event.target.closest("[data-cart-remove]");
 
   if (minus) {
-    const item = cart.find((entry) => entry.key === minus.dataset.cartMinus);
+    const item = cart.find(
+      (entry) => entry.key === minus.dataset.cartMinus
+    );
+
     if (item) {
       item.qty--;
+
       if (item.qty <= 0) {
         cart = cart.filter((entry) => entry.key !== item.key);
       }
@@ -503,7 +513,10 @@ $("#cart-items")?.addEventListener("click", (event) => {
   }
 
   if (plus) {
-    const item = cart.find((entry) => entry.key === plus.dataset.cartPlus);
+    const item = cart.find(
+      (entry) => entry.key === plus.dataset.cartPlus
+    );
+
     if (item && item.qty < item.stock) {
       item.qty++;
     } else if (item) {
@@ -560,13 +573,16 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   const form = event.currentTarget;
   const formData = new FormData(form);
 
-  // DATOS DEL CLIENTE
+  // DATOS DEL FORMULARIO
   const customerName = String(
     formData.get("customer") ||
     formData.get("customer_name") ||
     formData.get("name") ||
     ""
   ).trim();
+
+  const phone = String(formData.get("phone") || "").trim();
+  const address = String(formData.get("address") || "").trim();
 
   const notes = String(
     formData.get("message") ||
@@ -595,9 +611,11 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
   // PEDIDO PARA SUPABASE
   const order = {
     customer_name: customerName,
+    phone: phone,
+    address: address,
     notes: notes,
     items: orderItems,
-    total,
+    total: total,
     status: "Pendiente"
   };
 
@@ -608,56 +626,78 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     submitButton.textContent = "PROCESANDO...";
   }
 
-  const { error } = await supabaseClient
-    .from("orders")
-    .insert([order]);
+  try {
+    const { error } = await supabaseClient
+      .from("orders")
+      .insert([order]);
 
-  if (error) {
-    console.error("Error guardando pedido:", error);
-    showToast("No se pudo registrar el pedido. Intentá nuevamente.");
+    if (error) {
+      console.error("Error guardando pedido:", error);
+      console.error("Detalles del error:", error.message, error.details, error.hint);
+
+      showToast("No se pudo registrar el pedido. Intentá nuevamente.");
+
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
+      }
+
+      return;
+    }
+
+    // MENSAJE PARA WHATSAPP
+    let message = `Hola, quiero realizar este pedido en RV Parfums:\n\n`;
+
+    cart.forEach((item) => {
+      message += `• ${item.name}`;
+
+      if (item.size) {
+        message += ` (${item.size})`;
+      }
+
+      message += ` x${item.qty} — ${money(item.price * item.qty)}\n`;
+    });
+
+    message += `\nTotal: ${money(total)}`;
+    message += `\nNombre: ${customerName}.`;
+
+    if (phone) {
+      message += `\nTeléfono: ${phone}`;
+    }
+
+    if (address) {
+      message += `\nDirección: ${address}`;
+    }
+
+    if (notes) {
+      message += `\nMensaje: ${notes}`;
+    }
+
+    const whatsappURL =
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
+    cart = [];
+    renderCart();
+    form.reset();
+    closeCart();
 
     if (submitButton) {
       submitButton.disabled = false;
       submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
     }
 
-    return;
-  }
+    window.location.href = whatsappURL;
 
-  // MENSAJE PARA WHATSAPP
-  let message = `Hola, quiero realizar este pedido en RV Parfums:\n\n`;
+  } catch (error) {
+    console.error("Error inesperado al registrar pedido:", error);
 
-  cart.forEach((item) => {
-    message += `• ${item.name}`;
+    showToast("Ocurrió un error al registrar el pedido.");
 
-    if (item.size) {
-      message += ` (${item.size})`;
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
     }
-
-    message += ` x${item.qty} — ${money(item.price * item.qty)}\n`;
-  });
-
-  message += `\nTotal: ${money(total)}`;
-  message += `\nNombre: ${customerName}.`;
-
-  if (notes) {
-    message += `\nMensaje: ${notes}`;
   }
-
-  const whatsappURL =
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-
-  cart = [];
-  renderCart();
-  form.reset();
-  closeCart();
-
-  if (submitButton) {
-    submitButton.disabled = false;
-    submitButton.textContent = "FINALIZAR POR WHATSAPP ↗";
-  }
-
-  window.location.href = whatsappURL;
 });
 
 // ------------------------------
