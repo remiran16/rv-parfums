@@ -1,82 +1,82 @@
+
 (() => {
-  const cfg = window.STORE_CONFIG || {};
-  const ready = cfg.SUPABASE_URL?.startsWith("https://") &&
-    cfg.SUPABASE_ANON_KEY &&
-    !cfg.SUPABASE_ANON_KEY.includes("PEGAR_AQUI");
+  "use strict";
 
-  const db = ready
-    ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
-    : null;
+  const db = window.supabase.createClient(
+    window.STORE_CONFIG.SUPABASE_URL,
+    window.STORE_CONFIG.SUPABASE_ANON_KEY
+  );
 
-  const $ = s => document.querySelector(s);
-  const money = n => `${cfg.CURRENCY || "Gs."} ${Number(n || 0).toLocaleString("es-PY")}`;
+  const $ = (selector) => document.querySelector(selector);
 
-  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  }[c]));
+  const money = (value) =>
+    Number(value || 0).toLocaleString("es-PY");
 
-  function msg(id, t) {
-    $(id).textContent = t;
+  const esc = (value) =>
+    String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]);
+
+  function msg(element, text, error = false) {
+    if (!element) return;
+
+    element.textContent = text;
+    element.style.color = error ? "#d66b6b" : "";
   }
 
-  function toast(t) {
-    const el = $("#toast");
-    el.textContent = t;
-    el.classList.add("show");
-    setTimeout(() => el.classList.remove("show"), 2800);
+  function toast(text) {
+    const element = $("#toast");
+    if (!element) return;
+
+    element.textContent = text;
+    element.classList.add("show");
+
+    setTimeout(() => {
+      element.classList.remove("show");
+    }, 3000);
   }
 
-  function formData() {
-    return Object.fromEntries(new FormData($("#product-form")).entries());
-  }
+  let inventoryProducts = [];
+  let editingImageUrl = "";
 
-  // MOSTRAR LOS CAMPOS SEGÚN LA MODALIDAD
-  function togglePriceFields() {
-    const f = $("#product-form");
-    const type = f.elements.sale_type.value;
-    const unitField = $("#unit-price-field");
-    const mlFields = $("#ml-price-fields");
-
-    const unitInput = f.elements.price_unit;
-    const price5 = f.elements.price_5ml;
-    const price10 = f.elements.price_10ml;
-
-    const isMl = type === "ml";
-
-    unitField.hidden = isMl;
-    mlFields.hidden = !isMl;
-
-    unitInput.disabled = isMl;
-    unitInput.required = !isMl;
-
-    price5.disabled = !isMl;
-    price10.disabled = !isMl;
-
-    price5.required = isMl;
-    price10.required = isMl;
-  }
+  // ==========================================
+  // SESIÓN Y PANEL
+  // ==========================================
 
   async function checkSession() {
-    if (!db) {
-      $("#login-message").textContent = "Primero configurá Supabase en config.js.";
+    const { data, error } = await db.auth.getSession();
+
+    if (error) {
+      msg($("#login-message"), error.message, true);
       return;
     }
 
-    const { data } = await db.auth.getSession();
-    if (data.session) showDashboard();
-    else showLogin();
-  }
-
-  function showLogin() {
-    $("#login-view").hidden = false;
-    $("#dashboard").hidden = true;
+    if (data.session) {
+      await showDashboard();
+    } else {
+      $("#login-view").hidden = false;
+      $("#dashboard").hidden = true;
+    }
   }
 
   async function showDashboard() {
     $("#login-view").hidden = true;
     $("#dashboard").hidden = false;
-    await Promise.all([loadInventory(), loadOrders()]);
+
+    await Promise.all([
+      loadInventory(),
+      loadOrders(),
+      loadBestSellers()
+    ]);
   }
+
+  // ==========================================
+  // INVENTARIO
+  // ==========================================
 
   async function loadInventory() {
     const { data, error } = await db
@@ -85,324 +85,562 @@
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast("Error cargando inventario: " + error.message);
+      $("#inventory-body").innerHTML =
+        `<tr><td colspan="5">Error: ${esc(error.message)}</td></tr>`;
       return;
     }
 
-    const rows = data || [];
+    inventoryProducts = data || [];
 
-    $("#stat-products").textContent = rows.filter(x => x.active).length;
-    $("#stat-stock").textContent = rows.reduce((a, x) => a + Number(x.stock || 0), 0);
+    const activeProducts = inventoryProducts.filter(
+      (product) => product.active
+    );
 
-    $("#inventory-body").innerHTML = rows.length
-      ? rows.map(p => `
+    $("#stat-products").textContent = activeProducts.length;
+
+    $("#stat-stock").textContent = inventoryProducts.reduce(
+      (total, product) =>
+        total + Number(product.stock || 0),
+      0
+    );
+
+    renderInventory();
+    renderBestSellerSelectors();
+  }
+
+  function renderInventory() {
+    const body = $("#inventory-body");
+
+    if (!inventoryProducts.length) {
+      body.innerHTML =
+        `<tr><td colspan="5">No hay productos registrados.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = inventoryProducts.map((product) => {
+      const prices = product.sale_type === "ml"
+        ? `5 ml: Gs. ${money(product.price_5ml)}<br>
+           10 ml: Gs. ${money(product.price_10ml)}`
+        : `Gs. ${money(product.price)}`;
+
+      return `
         <tr>
           <td>
-            <b>${esc(p.name)}</b>
-            <small>${esc(p.brand || "")}</small>
+            <strong>${esc(product.name)}</strong><br>
+            <small>${esc(product.brand || "")}</small>
           </td>
+
+          <td>${prices}</td>
+
+          <td>${Number(product.stock || 0)}</td>
+
           <td>
-            ${p.sale_type === "ml"
-              ? `<small>5 ml: ${money(p.price_5ml)}</small>
-                 <small>10 ml: ${money(p.price_10ml)}</small>`
-              : `<small>Por unidad: ${money(p.price)}</small>`
-            }
+            ${product.active ? "Activo" : "Oculto"}
           </td>
+
           <td>
-            <input class="stock-input" type="number" min="0"
-              value="${Number(p.stock || 0)}"
-              data-stock="${p.id}" aria-label="Stock">
-          </td>
-          <td>${p.active
-            ? '<span class="status active">Activo</span>'
-            : '<span class="status">Oculto</span>'}
-          </td>
-          <td>
-            <button class="text-button" data-edit="${p.id}">Editar</button>
-            <button class="text-button danger" data-delete="${p.id}">Borrar</button>
+            <button
+              type="button"
+              class="button button-outline"
+              data-edit="${esc(product.id)}"
+            >
+              Editar
+            </button>
+
+            <button
+              type="button"
+              class="button button-outline"
+              data-delete="${esc(product.id)}"
+            >
+              Eliminar
+            </button>
           </td>
         </tr>
-      `).join("")
-      : '<tr><td colspan="5">Todavía no hay productos.</td></tr>';
+      `;
+    }).join("");
 
-    $("#inventory-body").querySelectorAll("[data-edit]").forEach(b => {
-      b.onclick = () => editProduct(rows.find(p => String(p.id) === b.dataset.edit));
+    body.querySelectorAll("[data-edit]").forEach((button) => {
+      button.addEventListener("click", () => {
+        editProduct(button.dataset.edit);
+      });
     });
 
-    $("#inventory-body").querySelectorAll("[data-delete]").forEach(b => {
-      b.onclick = () => deleteProduct(b.dataset.delete);
-    });
-
-    $("#inventory-body").querySelectorAll("[data-stock]").forEach(i => {
-      i.onchange = () => updateStock(i.dataset.stock, i.value);
+    body.querySelectorAll("[data-delete]").forEach((button) => {
+      button.addEventListener("click", () => {
+        deleteProduct(button.dataset.delete);
+      });
     });
   }
+
+  async function deleteProduct(id) {
+    if (!confirm("¿Querés eliminar este producto?")) return;
+
+    const { error } = await db
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast("Error al eliminar: " + error.message);
+      return;
+    }
+
+    toast("Producto eliminado.");
+    await loadInventory();
+    await loadBestSellers();
+  }
+
+  function editProduct(id) {
+    const product = inventoryProducts.find(
+      (item) => String(item.id) === String(id)
+    );
+
+    if (!product) return;
+
+    const form = $("#product-form");
+
+    form.elements.id.value = product.id;
+    form.elements.name.value = product.name || "";
+    form.elements.brand.value = product.brand || "";
+    form.elements.category.value = product.category || "";
+    form.elements.description.value = product.description || "";
+    form.elements.sale_type.value = product.sale_type || "unit";
+    form.elements.price_unit.value = product.price || "";
+    form.elements.price_5ml.value = product.price_5ml || "";
+    form.elements.price_10ml.value = product.price_10ml || "";
+    form.elements.stock.value = product.stock || 0;
+    form.elements.active.checked = Boolean(product.active);
+
+    editingImageUrl = product.image_url || "";
+
+    $("#form-title").textContent = "Editar producto";
+
+    togglePriceFields();
+
+    window.scrollTo({
+      top: form.getBoundingClientRect().top + window.scrollY - 100,
+      behavior: "smooth"
+    });
+  }
+
+  // ==========================================
+  // MODALIDAD DE VENTA
+  // ==========================================
+
+  function togglePriceFields() {
+    const saleType = $("#sale-type").value;
+
+    $("#unit-price-field").hidden = saleType !== "unit";
+    $("#ml-price-fields").hidden = saleType !== "ml";
+  }
+
+  // ==========================================
+  // GUARDAR PRODUCTO
+  // ==========================================
+
+  async function saveProduct(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    const id = formData.get("id");
+    const image = formData.get("image");
+
+    let imageUrl = editingImageUrl;
+
+    if (image && image.size > 0) {
+      const extension = image.name.split(".").pop();
+      const fileName = `${crypto.randomUUID()}.${extension}`;
+
+      const { error: uploadError } = await db.storage
+        .from("product-images")
+        .upload(fileName, image, {
+          upsert: true
+        });
+
+      if (uploadError) {
+        msg($("#product-message"), uploadError.message, true);
+        return;
+      }
+
+      const { data: publicUrl } = db.storage
+        .from("product-images")
+        .getPublicUrl(fileName);
+
+      imageUrl = publicUrl.publicUrl;
+    }
+
+    const saleType = formData.get("sale_type");
+
+    const product = {
+      name: formData.get("name"),
+      brand: formData.get("brand"),
+      category: formData.get("category"),
+      description: formData.get("description"),
+      sale_type: saleType,
+      price: saleType === "unit"
+        ? Number(formData.get("price_unit") || 0)
+        : 0,
+      price_5ml: saleType === "ml"
+        ? Number(formData.get("price_5ml") || 0)
+        : 0,
+      price_10ml: saleType === "ml"
+        ? Number(formData.get("price_10ml") || 0)
+        : 0,
+      stock: Number(formData.get("stock") || 0),
+      active: form.elements.active.checked,
+      image_url: imageUrl
+    };
+
+    let result;
+
+    if (id) {
+      result = await db
+        .from("products")
+        .update(product)
+        .eq("id", id);
+    } else {
+      result = await db
+        .from("products")
+        .insert([product]);
+    }
+
+    if (result.error) {
+      msg($("#product-message"), result.error.message, true);
+      return;
+    }
+
+    msg($("#product-message"), "Producto guardado correctamente.");
+
+    resetProductForm();
+
+    await loadInventory();
+    await loadBestSellers();
+
+    toast("Producto guardado.");
+  }
+
+  function resetProductForm() {
+    $("#product-form").reset();
+
+    $("#product-form").elements.id.value = "";
+
+    editingImageUrl = "";
+
+    $("#form-title").textContent = "Agregar producto";
+
+    togglePriceFields();
+
+    $("#product-message").textContent = "";
+  }
+
+  // ==========================================
+  // LOS MÁS VENDIDOS
+  // GESTIÓN COMPLETAMENTE INDEPENDIENTE
+  // ==========================================
+
+  function getBestSellerSelect(slot) {
+    return $(`#bestseller-slot-${slot}`);
+  }
+
+  function renderBestSellerSelectors() {
+    const activeProducts = inventoryProducts.filter(
+      (product) => product.active
+    );
+
+    for (let slot = 1; slot <= 6; slot++) {
+      const select = getBestSellerSelect(slot);
+
+      if (!select) continue;
+
+      const currentValue = select.value;
+
+      select.innerHTML = `
+        <option value="">Espacio vacío</option>
+        ${activeProducts.map((product) => `
+          <option value="${esc(product.id)}">
+            ${esc(product.name)}
+            ${product.brand ? ` — ${esc(product.brand)}` : ""}
+          </option>
+        `).join("")}
+      `;
+
+      if (
+        currentValue &&
+        activeProducts.some(
+          (product) => String(product.id) === currentValue
+        )
+      ) {
+        select.value = currentValue;
+      }
+    }
+  }
+
+  async function loadBestSellers() {
+    const message = $("#bestsellers-message");
+
+    const { data, error } = await db
+      .from("bestsellers")
+      .select("slot, product_id")
+      .order("slot", { ascending: true });
+
+    if (error) {
+      msg(
+        message,
+        "No se pudo cargar la selección: " + error.message,
+        true
+      );
+      return;
+    }
+
+    renderBestSellerSelectors();
+
+    for (let slot = 1; slot <= 6; slot++) {
+      const select = getBestSellerSelect(slot);
+
+      if (!select) continue;
+
+      const saved = (data || []).find(
+        (item) => Number(item.slot) === slot
+      );
+
+      const productId = saved?.product_id || "";
+
+      const exists = Array.from(select.options).some(
+        (option) => option.value === String(productId)
+      );
+
+      select.value = exists ? String(productId) : "";
+    }
+
+    msg(message, "");
+  }
+
+  async function saveBestSellers() {
+    const message = $("#bestsellers-message");
+
+    const selected = [];
+
+    for (let slot = 1; slot <= 6; slot++) {
+      const select = getBestSellerSelect(slot);
+
+      selected.push({
+        slot,
+        product_id: select?.value || null
+      });
+    }
+
+    const chosenIds = selected
+      .map((item) => item.product_id)
+      .filter(Boolean);
+
+    if (new Set(chosenIds).size !== chosenIds.length) {
+      msg(
+        message,
+        "No podés seleccionar el mismo producto en dos posiciones.",
+        true
+      );
+      return;
+    }
+
+    const { error: deleteError } = await db
+      .from("bestsellers")
+      .delete()
+      .gte("slot", 1)
+      .lte("slot", 6);
+
+    if (deleteError) {
+      msg(message, deleteError.message, true);
+      return;
+    }
+
+    const rows = selected.filter(
+      (item) => item.product_id !== null
+    );
+
+    if (rows.length) {
+      const { error: insertError } = await db
+        .from("bestsellers")
+        .insert(rows);
+
+      if (insertError) {
+        msg(message, insertError.message, true);
+        return;
+      }
+    }
+
+    msg(message, "Selección guardada correctamente.");
+    toast("Los más vendidos se actualizaron.");
+  }
+
+  function clearBestSellers() {
+    for (let slot = 1; slot <= 6; slot++) {
+      const select = getBestSellerSelect(slot);
+
+      if (select) select.value = "";
+    }
+
+    msg(
+      $("#bestsellers-message"),
+      "Selección vaciada. Presioná GUARDAR SELECCIÓN para confirmar."
+    );
+  }
+
+  // ==========================================
+  // PEDIDOS
+  // ==========================================
 
   async function loadOrders() {
     const { data, error } = await db
       .from("orders")
       .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
+      .order("created_at", { ascending: false });
 
     if (error) {
       $("#orders-body").innerHTML =
-        '<tr><td colspan="7">No se pudieron cargar los pedidos.</td></tr>';
+        `<tr><td colspan="7">Error: ${esc(error.message)}</td></tr>`;
       return;
     }
 
     const orders = data || [];
+
     $("#stat-orders").textContent = orders.length;
 
-    $("#orders-body").innerHTML = orders.length
-      ? orders.map(o => `
+    const body = $("#orders-body");
+
+    if (!orders.length) {
+      body.innerHTML =
+        `<tr><td colspan="7">Todavía no hay pedidos.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = orders.map((order) => {
+      const date = new Date(order.created_at).toLocaleString("es-PY");
+
+      const items = Array.isArray(order.items)
+        ? order.items.map((item) =>
+            `${esc(item.name)} x ${Number(item.quantity || 1)}`
+          ).join("<br>")
+        : "";
+
+      return `
         <tr>
-          <td>${new Date(o.created_at).toLocaleDateString("es-PY")}</td>
+          <td>${date}</td>
           <td>
-            <b>${esc(o.customer_name)}</b>
-            <small>${esc(o.phone)}</small>
+            <strong>${esc(order.customer_name)}</strong><br>
+            ${esc(order.phone)}
           </td>
-          <td>${(o.items || []).map(i =>
-            `${esc(i.name)}${i.size ? ` (${esc(i.size)})` : ""} ×${i.quantity}`
-          ).join("<br>")}</td>
-          <td>${money(o.total)}</td>
-          <td><span class="status">${esc(o.status)}</span></td>
+          <td>${items}</td>
+          <td>Gs. ${money(order.total)}</td>
+          <td>${esc(order.status || "Pendiente")}</td>
           <td>
-            <select data-status="${o.id}" aria-label="Estado del pedido">
-              <option ${o.status === "Nuevo" ? "selected" : ""}>Nuevo</option>
-              <option ${o.status === "En preparación" ? "selected" : ""}>En preparación</option>
-              <option ${o.status === "Entregado" ? "selected" : ""}>Entregado</option>
-              <option ${o.status === "Cancelado" ? "selected" : ""}>Cancelado</option>
+            <select data-status="${esc(order.id)}">
+              <option value="Pendiente" ${order.status === "Pendiente" ? "selected" : ""}>Pendiente</option>
+              <option value="Confirmado" ${order.status === "Confirmado" ? "selected" : ""}>Confirmado</option>
+              <option value="En preparación" ${order.status === "En preparación" ? "selected" : ""}>En preparación</option>
+              <option value="Entregado" ${order.status === "Entregado" ? "selected" : ""}>Entregado</option>
+              <option value="Cancelado" ${order.status === "Cancelado" ? "selected" : ""}>Cancelado</option>
             </select>
           </td>
           <td>
-            <button class="text-button danger"
-              data-delete-order="${o.id}"
-              title="Eliminar pedido"
-              aria-label="Eliminar pedido">🗑️</button>
+            <button
+              type="button"
+              class="button button-outline"
+              data-delete-order="${esc(order.id)}"
+            >
+              Eliminar
+            </button>
           </td>
         </tr>
-      `).join("")
-      : '<tr><td colspan="7">Todavía no hay pedidos.</td></tr>';
+      `;
+    }).join("");
 
-    $("#orders-body").querySelectorAll("[data-status]").forEach(s => {
-      s.onchange = async () => {
+    body.querySelectorAll("[data-status]").forEach((select) => {
+      select.addEventListener("change", async () => {
         const { error } = await db
           .from("orders")
-          .update({ status: s.value })
-          .eq("id", s.dataset.status);
+          .update({ status: select.value })
+          .eq("id", select.dataset.status);
 
-        toast(error ? "No se pudo actualizar: " + error.message : "Estado actualizado.");
+        if (error) {
+          toast("Error al actualizar pedido.");
+          return;
+        }
 
-        if (error) await loadOrders();
-      };
+        toast("Estado del pedido actualizado.");
+        await loadOrders();
+      });
     });
 
-    $("#orders-body").querySelectorAll("[data-delete-order]").forEach(b => {
-      b.onclick = () => deleteOrder(b.dataset.deleteOrder);
+    body.querySelectorAll("[data-delete-order]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!confirm("¿Eliminar este pedido?")) return;
+
+        const { error } = await db
+          .from("orders")
+          .delete()
+          .eq("id", button.dataset.deleteOrder);
+
+        if (error) {
+          toast("Error al eliminar pedido.");
+          return;
+        }
+
+        toast("Pedido eliminado.");
+        await loadOrders();
+      });
     });
   }
 
-  async function deleteOrder(id) {
-    if (!confirm("¿Estás seguro de que querés eliminar este pedido? Esta acción no se puede deshacer.")) {
-      return;
-    }
-
-    const { error } = await db
-      .from("orders")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast("No se pudo eliminar: " + error.message);
-      return;
-    }
-
-    toast("Pedido eliminado correctamente.");
-    await loadOrders();
-  }
-
-  function editProduct(p) {
-    if (!p) return;
-
-    const f = $("#product-form");
-
-    for (const k of [
-      "id", "name", "brand", "category", "description", "stock"
-    ]) {
-      f.elements[k].value = p[k] ?? "";
-    }
-
-    const type = p.sale_type || "unit";
-    f.elements.sale_type.value = type;
-
-    f.elements.price_unit.value = type === "unit" ? (p.price ?? "") : "";
-    f.elements.price_5ml.value = p.price_5ml ?? "";
-    f.elements.price_10ml.value = p.price_10ml ?? "";
-
-    f.elements.active.checked = !!p.active;
-
-    togglePriceFields();
-
-    $("#form-title").textContent = "Editar producto";
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  async function deleteProduct(id) {
-    if (!confirm("¿Seguro que querés borrar este producto?")) return;
-
-    const { error } = await db
-      .from("products")
-      .delete()
-      .eq("id", id);
-
-    toast(error ? "No se pudo borrar: " + error.message : "Producto eliminado.");
-    await loadInventory();
-  }
-
-  async function updateStock(id, value) {
-    const n = Math.max(0, Number(value) || 0);
-
-    const { error } = await db
-      .from("products")
-      .update({ stock: n })
-      .eq("id", id);
-
-    toast(error ? "No se pudo actualizar el stock." : "Stock actualizado.");
-    await loadInventory();
-  }
-
-  async function saveProduct(e) {
-    e.preventDefault();
-
-    const f = $("#product-form");
-    const d = formData();
-    const id = d.id || null;
-    const type = d.sale_type;
-
-    let image_url = null;
-    let price5 = 0;
-    let price10 = 0;
-    let priceUnit = 0;
-
-    if (type === "ml") {
-      price5 = Number(d.price_5ml);
-      price10 = Number(d.price_10ml);
-
-      if (price5 <= 0 || price10 <= 0) {
-        msg("#product-message", "Ingresá precios válidos para 5 ml y 10 ml.");
-        return;
-      }
-    } else {
-      priceUnit = Number(d.price_unit);
-
-      if (priceUnit <= 0) {
-        msg("#product-message", "Ingresá un precio válido por unidad.");
-        return;
-      }
-
-      // Compatibilidad con el campo de precio anterior
-      price5 = priceUnit;
-    }
-
-    const file = f.elements.image.files[0];
-
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        return msg("#product-message", "El archivo debe ser una imagen.");
-      }
-
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      const path = `${crypto.randomUUID()}-${safe}`;
-
-      const { error: upErr } = await db.storage
-        .from("product-images")
-        .upload(path, file, { upsert: false });
-
-      if (upErr) {
-        return msg("#product-message", "Error subiendo imagen: " + upErr.message);
-      }
-
-      const { data } = db.storage
-        .from("product-images")
-        .getPublicUrl(path);
-
-      image_url = data.publicUrl;
-    }
-
-    const row = {
-      name: d.name.trim(),
-      brand: d.brand.trim(),
-      category: d.category.trim(),
-      description: d.description.trim(),
-      sale_type: type,
-      price: type === "ml" ? price5 : priceUnit,
-      price_5ml: price5,
-      price_10ml: price10,
-      stock: Number(d.stock),
-      active: f.elements.active.checked
-    };
-
-    if (image_url) row.image_url = image_url;
-
-    const result = id
-      ? await db.from("products").update(row).eq("id", id)
-      : await db.from("products").insert(row);
-
-    if (result.error) {
-      msg("#product-message", "No se pudo guardar: " + result.error.message);
-      return;
-    }
-
-    msg("#product-message", "Producto guardado correctamente.");
-
-    f.reset();
-    f.elements.id.value = "";
-    f.elements.active.checked = true;
-    f.elements.sale_type.value = "unit";
-    togglePriceFields();
-
-    $("#form-title").textContent = "Agregar producto";
-
-    await loadInventory();
-  }
+  // ==========================================
+  // EVENTOS
+  // ==========================================
 
   document.addEventListener("DOMContentLoaded", () => {
-    $("#login-form").onsubmit = async e => {
-      e.preventDefault();
-      if (!db) return;
 
-      const f = new FormData(e.target);
+    $("#login-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const formData = new FormData(event.currentTarget);
 
       const { error } = await db.auth.signInWithPassword({
-        email: f.get("email"),
-        password: f.get("password")
+        email: formData.get("email"),
+        password: formData.get("password")
       });
 
-      msg("#login-message", error ? "No se pudo ingresar. Revisá tus datos." : "");
+      if (error) {
+        msg($("#login-message"), error.message, true);
+        return;
+      }
 
-      if (!error) showDashboard();
-    };
+      await checkSession();
+    });
 
-    $("#logout").onclick = async () => {
+    $("#logout").addEventListener("click", async () => {
       await db.auth.signOut();
-      showLogin();
-    };
+      location.reload();
+    });
 
-    $("#product-form").onsubmit = saveProduct;
+    $("#product-form").addEventListener("submit", saveProduct);
 
     $("#sale-type").addEventListener("change", togglePriceFields);
 
-    $("#reset-form").onclick = () => {
-      $("#product-form").reset();
-      $("#product-form").elements.id.value = "";
-      $("#product-form").elements.sale_type.value = "unit";
-      togglePriceFields();
-      $("#form-title").textContent = "Agregar producto";
-      msg("#product-message", "");
-    };
+    $("#reset-form").addEventListener("click", resetProductForm);
+
+    $("#save-bestsellers").addEventListener(
+      "click",
+      saveBestSellers
+    );
+
+    $("#clear-bestsellers").addEventListener(
+      "click",
+      clearBestSellers
+    );
 
     togglePriceFields();
+
     checkSession();
   });
+
 })();
