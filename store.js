@@ -236,7 +236,7 @@ function createBestSellerCard(product, index, clone = false) {
       >
         <div class="bestseller-empty-content">
           <img
-            src="./rv-logo.jpeg"
+            src="./rv-logo-transparente.png"
             alt="RV Parfums"
             class="bestseller-logo"
             loading="lazy"
