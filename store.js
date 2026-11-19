@@ -1,91 +1,3 @@
-const { createClient } = window.supabase;
-
-const supabaseClient = createClient(
-  window.STORE_CONFIG.SUPABASE_URL,
-  window.STORE_CONFIG.SUPABASE_ANON_KEY
-);
-
-const WHATSAPP_NUMBER = window.STORE_CONFIG.WHATSAPP_NUMBER;
-
-let products = [];
-let cart = [];
-let currentProduct = null;
-let selectedSize = null;
-let modalQuantity = 1;
-
-// LOS MÁS VENDIDOS
-let bestSellerProducts = Array(6).fill(null);
-let bestSellerPosition = 0;
-let bestSellerTimer = null;
-
-const $ = (selector) => document.querySelector(selector);
-
-const money = (value) =>
-  `${window.STORE_CONFIG.CURRENCY} ${Number(value || 0).toLocaleString("es-PY")}`;
-
-function escapeHTML(value = "") {
-  return String(value).replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[char]);
-}
-
-function showToast(message) {
-  const toast = $("#toast");
-  if (!toast) return;
-
-  toast.textContent = message;
-  toast.classList.add("show");
-
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, 2500);
-}
-
-// ------------------------------
-// CARGAR PRODUCTOS
-// ------------------------------
-
-async function loadProducts() {
-  const grid = $("#product-grid");
-  if (!grid) return;
-
-  grid.innerHTML = '<p class="loading">Cargando productos...</p>';
-
-  try {
-    const { data, error } = await supabaseClient
-      .from("products")
-      .select("*")
-      .eq("active", true)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    products = data || [];
-
-    renderProducts();
-    updateCategories();
-
-    await loadBestSellers();
-
-  } catch (error) {
-    console.error("Error cargando productos:", error);
-    grid.innerHTML =
-      '<p class="notice">No se pudieron cargar los productos.</p>';
-  }
-}
-
-function getProductPrice(product) {
-  if (product.sale_type === "ml") {
-    return Number(product.price_5ml || product.price || 0);
-  }
-
-  return Number(product.price || 0);
-}
 
 function renderProducts() {
   const grid = $("#product-grid");
@@ -113,7 +25,17 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = filtered.map((product) => {
+  // Separar decants y perfumes
+  const decants = filtered.filter(
+    product => product.sale_type === "ml"
+  );
+
+  const perfumes = filtered.filter(
+    product => product.sale_type !== "ml"
+  );
+
+  // Generar tarjeta de producto
+  const createProductCard = (product) => {
     const price = getProductPrice(product);
     const stock = Number(product.stock || 0);
 
@@ -160,7 +82,35 @@ function renderProducts() {
         </div>
       </article>
     `;
-  }).join("");
+  };
+
+  let html = "";
+
+  // PRIMERA SECCIÓN: DECANTS
+  if (decants.length) {
+    html += `
+      <div class="catalog-section catalog-decants">
+        <h2 class="catalog-section-title">DECANTS</h2>
+        <div class="catalog-products-grid">
+          ${decants.map(createProductCard).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // SEGUNDA SECCIÓN: PERFUMES
+  if (perfumes.length) {
+    html += `
+      <div class="catalog-section catalog-perfumes">
+        <h2 class="catalog-section-title">PERFUMES</h2>
+        <div class="catalog-products-grid">
+          ${perfumes.map(createProductCard).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  grid.innerHTML = html;
 }
 
 function updateCategories() {
@@ -310,61 +260,50 @@ function renderBestSellers() {
 
   bestSellerPosition = 0;
   updateBestSellerPosition();
-  
-// ------------------------------
-// MOVIMIENTO MANUAL DEL CARRUSEL
-// ------------------------------
 
-const bestSellerViewport = $("#bestsellers-viewport");
+  // MOVIMIENTO MANUAL DEL CARRUSEL
 
-let bestSellerDragStartX = 0;
-let bestSellerDragging = false;
-let bestSellerDragged = false;
+  const bestSellerViewport = $("#bestsellers-viewport");
 
-if (bestSellerViewport) {
-  bestSellerViewport.style.touchAction = "pan-y";
+  let bestSellerDragStartX = 0;
+  let bestSellerDragging = false;
+  let bestSellerDragged = false;
 
-  bestSellerViewport.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("[data-bestseller-product]")) {
-      // Permitimos iniciar el gesto sobre las tarjetas.
-    }
+  if (bestSellerViewport) {
+    bestSellerViewport.style.touchAction = "pan-y";
 
-    bestSellerDragging = true;
-    bestSellerDragged = false;
-    bestSellerDragStartX = event.clientX;
+    bestSellerViewport.addEventListener("pointerdown", (event) => {
+      bestSellerDragging = true;
+      bestSellerDragged = false;
+      bestSellerDragStartX = event.clientX;
 
-    clearInterval(bestSellerTimer);
-    bestSellerTimer = null;
-  });
+      clearInterval(bestSellerTimer);
+      bestSellerTimer = null;
+    });
 
-  bestSellerViewport.addEventListener("pointermove", (event) => {
-    if (!bestSellerDragging) return;
+    bestSellerViewport.addEventListener("pointermove", (event) => {
+      if (!bestSellerDragging) return;
 
-    const distance = event.clientX - bestSellerDragStartX;
+      const distance = event.clientX - bestSellerDragStartX;
 
-    if (Math.abs(distance) > 10) {
-      bestSellerDragged = true;
-    }
-  });
+      if (Math.abs(distance) > 10) {
+        bestSellerDragged = true;
+      }
+    });
 
-  function finishBestSellerDrag(event) {
-    if (!bestSellerDragging) return;
+    function finishBestSellerDrag(event) {
+      if (!bestSellerDragging) return;
 
-    bestSellerDragging = false;
+      bestSellerDragging = false;
 
-    const distance = event.clientX - bestSellerDragStartX;
+      const distance = event.clientX - bestSellerDragStartX;
 
-    if (Math.abs(distance) > 40) {
-      const track = $("#bestsellers-track");
-
-      if (track) {
+      if (Math.abs(distance) > 40) {
         if (distance < 0) {
-          // Deslizar hacia la izquierda: siguiente tarjeta
           if (bestSellerPosition < 6) {
             moveBestSellerCarousel();
           }
         } else {
-          // Deslizar hacia la derecha: tarjeta anterior
           if (bestSellerPosition > 0) {
             bestSellerPosition--;
             updateBestSellerPosition();
@@ -372,28 +311,27 @@ if (bestSellerViewport) {
           }
         }
       }
+
+      setTimeout(() => {
+        bestSellerDragged = false;
+      }, 100);
+
+      setTimeout(() => {
+        startBestSellerCarousel();
+      }, 2500);
     }
 
-    setTimeout(() => {
-      bestSellerDragged = false;
-    }, 100);
+    bestSellerViewport.addEventListener("pointerup", finishBestSellerDrag);
+    bestSellerViewport.addEventListener("pointercancel", finishBestSellerDrag);
 
-    setTimeout(() => {
-      startBestSellerCarousel();
-    }, 2500);
+    bestSellerViewport.addEventListener("click", (event) => {
+      if (bestSellerDragged) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
   }
 
-  bestSellerViewport.addEventListener("pointerup", finishBestSellerDrag);
-  bestSellerViewport.addEventListener("pointercancel", finishBestSellerDrag);
-
-  bestSellerViewport.addEventListener("click", (event) => {
-    if (bestSellerDragged) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  }, true);
-}
-  
   renderBestSellerDots();
 }
 
@@ -1013,13 +951,16 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     if (submitButton) {
       submitButton.disabled = false;
       submitButton.textContent = "CONFIRMAR PEDIDO";
+          } catch (error) {
+      console.error("Error al procesar el pedido:", error);
+      alert("No se pudo registrar el pedido. Por favor, intentá nuevamente.");
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "CONFIRMAR PEDIDO";
     }
-  }
+  });
+
+  // Inicializar la tienda
+  renderCart();
+  loadProducts();
 });
-
-// ------------------------------
-// INICIALIZACIÓN
-// ------------------------------
-
-renderCart();
-loadProducts();
