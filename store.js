@@ -113,7 +113,11 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = filtered.map((product) => {
+  // Primero mostramos los decants y luego los perfumes completos.
+  const decants = filtered.filter((product) => product.sale_type === "ml");
+  const perfumes = filtered.filter((product) => product.sale_type !== "ml");
+
+  function createCatalogCard(product) {
     const price = getProductPrice(product);
     const stock = Number(product.stock || 0);
 
@@ -160,7 +164,37 @@ function renderProducts() {
         </div>
       </article>
     `;
-  }).join("");
+  }
+
+  const sectionTitleStyle = `
+    grid-column: 1 / -1;
+    width: 100%;
+    margin: 28px 0 8px;
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 700;
+    line-height: 1.2;
+  `;
+    let html = "";
+
+  if (decants.length) {
+    html += `
+      <h2 class="catalog-section-title" style="${sectionTitleStyle}">
+        Decants
+      </h2>
+      ${decants.map(createCatalogCard).join("")}
+    `;
+  }
+
+  if (perfumes.length) {
+    html += `
+      <h2 class="catalog-section-title" style="${sectionTitleStyle}">
+        Perfumes
+      </h2>
+      ${perfumes.map(createCatalogCard).join("")}
+    `;
+  }
+
+  grid.innerHTML = html;
 }
 
 function updateCategories() {
@@ -310,11 +344,10 @@ function renderBestSellers() {
 
   bestSellerPosition = 0;
   updateBestSellerPosition();
-  
+
 // ------------------------------
 // MOVIMIENTO MANUAL DEL CARRUSEL
 // ------------------------------
-
 const bestSellerViewport = $("#bestsellers-viewport");
 
 let bestSellerDragStartX = 0;
@@ -393,7 +426,7 @@ if (bestSellerViewport) {
     }
   }, true);
 }
-  
+
   renderBestSellerDots();
 }
 
@@ -461,7 +494,6 @@ function resetBestSellerCarousel() {
     });
   });
 }
-
 $("#bestsellers-track")?.addEventListener(
   "transitionend",
   (event) => {
@@ -670,7 +702,6 @@ function closeProductModal() {
 // ------------------------------
 // EVENTOS DE LA VENTANA
 // ------------------------------
-
 $("#product-grid")?.addEventListener("click", (event) => {
   const card = event.target.closest("[data-open-product]");
   if (card) openProduct(card.dataset.openProduct);
@@ -845,8 +876,7 @@ $("#cart-items")?.addEventListener("click", (event) => {
   const minus = event.target.closest("[data-cart-minus]");
   const plus = event.target.closest("[data-cart-plus]");
   const remove = event.target.closest("[data-cart-remove]");
-
-  if (minus) {
+    if (minus) {
     const item = cart.find(
       (entry) => entry.key === minus.dataset.cartMinus
     );
