@@ -310,6 +310,90 @@ function renderBestSellers() {
 
   bestSellerPosition = 0;
   updateBestSellerPosition();
+  
+// ------------------------------
+// MOVIMIENTO MANUAL DEL CARRUSEL
+// ------------------------------
+
+const bestSellerViewport = $("#bestsellers-viewport");
+
+let bestSellerDragStartX = 0;
+let bestSellerDragging = false;
+let bestSellerDragged = false;
+
+if (bestSellerViewport) {
+  bestSellerViewport.style.touchAction = "pan-y";
+
+  bestSellerViewport.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("[data-bestseller-product]")) {
+      // Permitimos iniciar el gesto sobre las tarjetas.
+    }
+
+    bestSellerDragging = true;
+    bestSellerDragged = false;
+    bestSellerDragStartX = event.clientX;
+
+    clearInterval(bestSellerTimer);
+    bestSellerTimer = null;
+  });
+
+  bestSellerViewport.addEventListener("pointermove", (event) => {
+    if (!bestSellerDragging) return;
+
+    const distance = event.clientX - bestSellerDragStartX;
+
+    if (Math.abs(distance) > 10) {
+      bestSellerDragged = true;
+    }
+  });
+
+  function finishBestSellerDrag(event) {
+    if (!bestSellerDragging) return;
+
+    bestSellerDragging = false;
+
+    const distance = event.clientX - bestSellerDragStartX;
+
+    if (Math.abs(distance) > 40) {
+      const track = $("#bestsellers-track");
+
+      if (track) {
+        if (distance < 0) {
+          // Deslizar hacia la izquierda: siguiente tarjeta
+          if (bestSellerPosition < 6) {
+            moveBestSellerCarousel();
+          }
+        } else {
+          // Deslizar hacia la derecha: tarjeta anterior
+          if (bestSellerPosition > 0) {
+            bestSellerPosition--;
+            updateBestSellerPosition();
+            renderBestSellerDots();
+          }
+        }
+      }
+    }
+
+    setTimeout(() => {
+      bestSellerDragged = false;
+    }, 100);
+
+    setTimeout(() => {
+      startBestSellerCarousel();
+    }, 2500);
+  }
+
+  bestSellerViewport.addEventListener("pointerup", finishBestSellerDrag);
+  bestSellerViewport.addEventListener("pointercancel", finishBestSellerDrag);
+
+  bestSellerViewport.addEventListener("click", (event) => {
+    if (bestSellerDragged) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+}
+  
   renderBestSellerDots();
 }
 
