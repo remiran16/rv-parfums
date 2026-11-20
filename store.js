@@ -174,9 +174,9 @@ function renderProducts() {
     font-weight: 700;
     line-height: 1.2;
   `;
-    let html = "";
 
-  if (decants.length) {
+  let html = "";
+    if (decants.length) {
     html += `
       <h2 class="catalog-section-title" style="${sectionTitleStyle}">
         Decants
@@ -345,7 +345,7 @@ function renderBestSellers() {
   bestSellerPosition = 0;
   updateBestSellerPosition();
 
-  // MOVIMIENTO MANUAL CONTINUO
+  // MOVIMIENTO MANUAL CONTINUO DEL CARRUSEL
   const viewport = $("#bestsellers-viewport");
 
   let dragStartX = 0;
@@ -356,8 +356,7 @@ function renderBestSellers() {
 
   if (viewport) {
     viewport.style.touchAction = "pan-y";
-
-    viewport.addEventListener("pointerdown", (event) => {
+        viewport.addEventListener("pointerdown", (event) => {
       if (!event.isPrimary) return;
 
       if (event.pointerType === "mouse" && event.button !== 0) {
@@ -394,11 +393,9 @@ function renderBestSellers() {
         wasDragged = true;
       }
 
-      // El carrusel sigue el movimiento del dedo.
+      // El carrusel sigue el movimiento del dedo o del mouse.
       const position = -(dragStartPosition * step) + distance;
-
-      track.style.transform =
-        `translate3d(${position}px, 0, 0)`;
+      track.style.transform = `translate3d(${position}px, 0, 0)`;
     });
 
     function finishDrag(event) {
@@ -411,18 +408,14 @@ function renderBestSellers() {
       const step = getBestSellerStep();
 
       if (step && wasDragged) {
-        // Calcula cuántas tarjetas debe avanzar o retroceder.
+        // Avanza tantas tarjetas como corresponda según el recorrido.
         const newPosition = Math.round(
           dragStartPosition - distance / step
         );
 
-        bestSellerPosition = Math.max(
-          0,
-          Math.min(6, newPosition)
-        );
+        bestSellerPosition = Math.max(0, Math.min(6, newPosition));
       }
 
-      // Recupera la animación y acomoda el carrusel.
       track.style.transition = "";
       updateBestSellerPosition();
       renderBestSellerDots();
@@ -433,15 +426,16 @@ function renderBestSellers() {
         }, 300);
       }
 
+      // Pausa breve después del gesto antes de reanudar el automático.
       setTimeout(() => {
         startBestSellerCarousel();
-      }, 3500);
+      }, 2500);
     }
 
     viewport.addEventListener("pointerup", finishDrag);
     viewport.addEventListener("pointercancel", finishDrag);
 
-    // Evita abrir un producto cuando el usuario estaba deslizando.
+    // Evita abrir un producto si el usuario estaba deslizando.
     viewport.addEventListener("click", (event) => {
       if (wasDragged) {
         event.preventDefault();
@@ -449,32 +443,6 @@ function renderBestSellers() {
       }
     }, true);
   }
-
-  renderBestSellerDots();
-}
-        }
-      }
-    }
-
-    setTimeout(() => {
-      bestSellerDragged = false;
-    }, 100);
-
-    setTimeout(() => {
-      startBestSellerCarousel();
-    }, 2500);
-  }
-
-  bestSellerViewport.addEventListener("pointerup", finishBestSellerDrag);
-  bestSellerViewport.addEventListener("pointercancel", finishBestSellerDrag);
-
-  bestSellerViewport.addEventListener("click", (event) => {
-    if (bestSellerDragged) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  }, true);
-}
 
   renderBestSellerDots();
 }
@@ -543,6 +511,7 @@ function resetBestSellerCarousel() {
     });
   });
 }
+
 $("#bestsellers-track")?.addEventListener(
   "transitionend",
   (event) => {
@@ -566,7 +535,7 @@ function startBestSellerCarousel() {
     if (!document.hidden) {
       moveBestSellerCarousel();
     }
-  }, 2000);
+  }, 3500);
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -747,10 +716,10 @@ function closeProductModal() {
   document.body.classList.remove("modal-open");
   currentProduct = null;
 }
-
 // ------------------------------
 // EVENTOS DE LA VENTANA
 // ------------------------------
+
 $("#product-grid")?.addEventListener("click", (event) => {
   const card = event.target.closest("[data-open-product]");
   if (card) openProduct(card.dataset.openProduct);
@@ -920,12 +889,12 @@ function renderCart() {
     );
   }
 }
-
 $("#cart-items")?.addEventListener("click", (event) => {
   const minus = event.target.closest("[data-cart-minus]");
   const plus = event.target.closest("[data-cart-plus]");
   const remove = event.target.closest("[data-cart-remove]");
-    if (minus) {
+
+  if (minus) {
     const item = cart.find(
       (entry) => entry.key === minus.dataset.cartMinus
     );
@@ -1095,7 +1064,6 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     }
   }
 });
-
 // ------------------------------
 // INICIALIZACIÓN
 // ------------------------------
