@@ -345,64 +345,113 @@ function renderBestSellers() {
   bestSellerPosition = 0;
   updateBestSellerPosition();
 
-// ------------------------------
-// MOVIMIENTO MANUAL DEL CARRUSEL
-// ------------------------------
-const bestSellerViewport = $("#bestsellers-viewport");
+  // MOVIMIENTO MANUAL CONTINUO
+  const viewport = $("#bestsellers-viewport");
 
-let bestSellerDragStartX = 0;
-let bestSellerDragging = false;
-let bestSellerDragged = false;
+  let dragStartX = 0;
+  let dragStartPosition = 0;
+  let isDragging = false;
+  let wasDragged = false;
+  let activePointerId = null;
 
-if (bestSellerViewport) {
-  bestSellerViewport.style.touchAction = "pan-y";
+  if (viewport) {
+    viewport.style.touchAction = "pan-y";
 
-  bestSellerViewport.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("[data-bestseller-product]")) {
-      // Permitimos iniciar el gesto sobre las tarjetas.
+    viewport.addEventListener("pointerdown", (event) => {
+      if (!event.isPrimary) return;
+
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+
+      const step = getBestSellerStep();
+      if (!step) return;
+
+      isDragging = true;
+      wasDragged = false;
+      activePointerId = event.pointerId;
+
+      dragStartX = event.clientX;
+      dragStartPosition = bestSellerPosition;
+
+      track.style.transition = "none";
+
+      clearInterval(bestSellerTimer);
+      bestSellerTimer = null;
+
+      viewport.setPointerCapture(event.pointerId);
+    });
+
+    viewport.addEventListener("pointermove", (event) => {
+      if (!isDragging || event.pointerId !== activePointerId) return;
+
+      const step = getBestSellerStep();
+      if (!step) return;
+
+      const distance = event.clientX - dragStartX;
+
+      if (Math.abs(distance) > 6) {
+        wasDragged = true;
+      }
+
+      // El carrusel sigue el movimiento del dedo.
+      const position = -(dragStartPosition * step) + distance;
+
+      track.style.transform =
+        `translate3d(${position}px, 0, 0)`;
+    });
+
+    function finishDrag(event) {
+      if (!isDragging || event.pointerId !== activePointerId) return;
+
+      isDragging = false;
+      activePointerId = null;
+
+      const distance = event.clientX - dragStartX;
+      const step = getBestSellerStep();
+
+      if (step && wasDragged) {
+        // Calcula cuántas tarjetas debe avanzar o retroceder.
+        const newPosition = Math.round(
+          dragStartPosition - distance / step
+        );
+
+        bestSellerPosition = Math.max(
+          0,
+          Math.min(6, newPosition)
+        );
+      }
+
+      // Recupera la animación y acomoda el carrusel.
+      track.style.transition = "";
+      updateBestSellerPosition();
+      renderBestSellerDots();
+
+      if (wasDragged) {
+        setTimeout(() => {
+          wasDragged = false;
+        }, 300);
+      }
+
+      setTimeout(() => {
+        startBestSellerCarousel();
+      }, 3500);
     }
 
-    bestSellerDragging = true;
-    bestSellerDragged = false;
-    bestSellerDragStartX = event.clientX;
+    viewport.addEventListener("pointerup", finishDrag);
+    viewport.addEventListener("pointercancel", finishDrag);
 
-    clearInterval(bestSellerTimer);
-    bestSellerTimer = null;
-  });
+    // Evita abrir un producto cuando el usuario estaba deslizando.
+    viewport.addEventListener("click", (event) => {
+      if (wasDragged) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
+  }
 
-  bestSellerViewport.addEventListener("pointermove", (event) => {
-    if (!bestSellerDragging) return;
-
-    const distance = event.clientX - bestSellerDragStartX;
-
-    if (Math.abs(distance) > 10) {
-      bestSellerDragged = true;
-    }
-  });
-
-  function finishBestSellerDrag(event) {
-    if (!bestSellerDragging) return;
-
-    bestSellerDragging = false;
-
-    const distance = event.clientX - bestSellerDragStartX;
-
-    if (Math.abs(distance) > 40) {
-      const track = $("#bestsellers-track");
-
-      if (track) {
-        if (distance < 0) {
-          // Deslizar hacia la izquierda: siguiente tarjeta
-          if (bestSellerPosition < 6) {
-            moveBestSellerCarousel();
-          }
-        } else {
-          // Deslizar hacia la derecha: tarjeta anterior
-          if (bestSellerPosition > 0) {
-            bestSellerPosition--;
-            updateBestSellerPosition();
-            renderBestSellerDots();
-          }
+  renderBestSellerDots();
+}
         }
       }
     }
