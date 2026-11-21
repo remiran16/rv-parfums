@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -110,8 +109,7 @@
         </div>
 
       </div>
-
-      <!-- GESTIÓN INDEPENDIENTE DE LOS MÁS VENDIDOS -->
+            <!-- GESTIÓN INDEPENDIENTE DE LOS MÁS VENDIDOS -->
       <section class="admin-card" id="bestsellers-admin">
 
         <div class="card-title">
@@ -269,7 +267,7 @@
                   </option>
 
                   <option value="ml">
-                    Por mililitros (5 ml / 10 ml)
+                    Por mililitros (3 ml / 5 ml / 10 ml)
                   </option>
 
                 </select>
@@ -280,60 +278,154 @@
               </p>
 
             </div>
+                        <!-- PRECIO POR UNIDAD -->
+            <div id="unit-price-field" class="price-fields-section">
 
-            <!-- PRECIO POR UNIDAD -->
-            <div id="unit-price-field">
+              <p><strong>Precio del perfume completo</strong></p>
 
-              <label>
-                Precio por unidad (Gs.)
-
-                <input
-                  name="price_unit"
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="Ej. 150000"
-                >
-              </label>
-
-            </div>
-
-            <!-- PRECIOS POR MILILITROS -->
-            <div id="ml-price-fields">
-
-              <p><strong>Precios por presentación</strong></p>
-
-              <div class="form-row">
+              <div class="price-field-card">
 
                 <label>
-                  Precio 5 ml (Gs.)
+                  Precio normal por unidad (Gs.)
 
                   <input
-                    name="price_5ml"
+                    name="price_unit"
                     type="number"
                     min="0"
                     step="1"
-                    placeholder="Ej. 75000"
+                    placeholder="Ej. 250000"
                   >
                 </label>
 
                 <label>
-                  Precio 10 ml (Gs.)
+                  Precio de oferta por unidad (Gs.)
 
                   <input
-                    name="price_10ml"
+                    name="offer_price_unit"
                     type="number"
                     min="0"
                     step="1"
-                    placeholder="Ej. 130000"
+                    placeholder="Dejar vacío si no tiene oferta"
                   >
                 </label>
 
               </div>
 
+              <p class="muted">
+                El precio de oferta debe ser menor al precio normal.
+              </p>
+
             </div>
 
-            <!-- STOCK -->
+            <!-- PRECIOS POR MILILITROS -->
+            <div id="ml-price-fields" class="price-fields-section">
+
+              <p><strong>Precios por presentación</strong></p>
+
+              <div class="price-fields-grid">
+
+                <!-- DECANT 3 ML -->
+                <div class="price-field-card">
+
+                  <p class="price-field-title">DECANT 3 ML</p>
+
+                  <label>
+                    Precio normal (Gs.)
+
+                    <input
+                      name="price_3ml"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Ej. 35000"
+                    >
+                  </label>
+
+                  <label>
+                    Precio de oferta (Gs.)
+
+                    <input
+                      name="offer_price_3ml"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Sin oferta"
+                    >
+                  </label>
+
+                </div>
+
+                <!-- DECANT 5 ML -->
+                <div class="price-field-card">
+
+                  <p class="price-field-title">DECANT 5 ML</p>
+
+                  <label>
+                    Precio normal (Gs.)
+
+                    <input
+                      name="price_5ml"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Ej. 55000"
+                    >
+                  </label>
+
+                  <label>
+                    Precio de oferta (Gs.)
+
+                    <input
+                      name="offer_price_5ml"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Sin oferta"
+                    >
+                  </label>
+
+                </div>
+
+                <!-- DECANT 10 ML -->
+                <div class="price-field-card">
+
+                  <p class="price-field-title">DECANT 10 ML</p>
+
+                  <label>
+                    Precio normal (Gs.)
+
+                    <input
+                      name="price_10ml"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Ej. 95000"
+                    >
+                  </label>
+
+                  <label>
+                    Precio de oferta (Gs.)
+
+                    <input
+                      name="offer_price_10ml"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Sin oferta"
+                    >
+                  </label>
+
+                </div>
+
+              </div>
+
+              <p class="muted">
+                Completá los precios normales de las presentaciones disponibles.
+                Los precios de oferta son opcionales y deben ser menores al precio normal.
+              </p>
+
+            </div>
+                        <!-- STOCK -->
             <label>
               Stock
 
