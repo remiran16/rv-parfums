@@ -79,12 +79,60 @@ async function loadProducts() {
   }
 }
 
+function getOfferPrice(originalPrice, offerPrice) {
+  const original = Number(originalPrice || 0);
+  const offer = Number(offerPrice || 0);
+  return offer > 0 && original > 0 && offer < original ? offer : original;
+}
+
+function getSizePrices(product, size) {
+  const suffix = `${size}ml`;
+  const original = Number(product[`price_${suffix}`] || 0);
+  const offer = Number(product[`offer_price_${suffix}`] || 0);
+  return {
+    original,
+    price: getOfferPrice(original, offer),
+    onOffer: offer > 0 && original > 0 && offer < original
+  };
+}
+
+function getUnitPrices(product) {
+  const original = Number(product.price || 0);
+  const offer = Number(product.offer_price || 0);
+  return {
+    original,
+    price: getOfferPrice(original, offer),
+    onOffer: offer > 0 && original > 0 && offer < original
+  };
+}
+
 function getProductPrice(product) {
   if (product.sale_type === "ml") {
-    return Number(product.price_5ml || product.price || 0);
+    const prices = [3, 5, 10]
+      .map((size) => getSizePrices(product, size))
+      .filter((entry) => entry.original > 0);
+    if (!prices.length) return 0;
+    return Math.min(...prices.map((entry) => entry.price));
   }
 
-  return Number(product.price || 0);
+  return getUnitPrices(product).price;
+}
+
+function priceMarkup(prices, prefix = "") {
+  if (!prices || prices.price <= 0) return "";
+
+  if (prices.onOffer) {
+    return `<span class="price-offer-wrap"><span class="offer-badge">OFERTA</span><del class="price-original">${prefix}${money(prices.original)}</del><strong class="product-price price-current">${prefix}${money(prices.price)}</strong></span>`;
+  }
+
+  return `<strong class="product-price">${prefix}${money(prices.price)}</strong>`;
+}
+
+function getDecantStartingPrices(product) {
+  return [3, 5, 10]
+    .map((size) => ({ size, ...getSizePrices(product, size) }))
+    .filter((entry) => entry.original > 0)
+    .sort((a, b) => a.price - b.price)[0] || null;
 }
 
 function renderProducts() {
@@ -118,12 +166,17 @@ function renderProducts() {
   const perfumes = filtered.filter((product) => product.sale_type !== "ml");
 
   function createCatalogCard(product) {
-    const price = getProductPrice(product);
     const stock = Number(product.stock || 0);
+    const unitPrices = getUnitPrices(product);
+    const startingPrices = product.sale_type === "ml"
+      ? getDecantStartingPrices(product)
+      : null;
 
-    const priceText = product.sale_type === "ml"
-      ? `Desde ${money(price)}`
-      : money(price);
+    const priceHTML = product.sale_type === "ml"
+      ? (startingPrices
+          ? `<span class="price-from">Desde ${priceMarkup(startingPrices)}</span>`
+          : '<strong class="product-price">Consultar precio</strong>')
+      : priceMarkup(unitPrices);
 
     const image = product.image_url ||
       "https://placehold.co/600x600?text=RV+Parfums";
@@ -158,7 +211,7 @@ function renderProducts() {
             ${escapeHTML(product.description || "")}
           </p>
 
-          <strong class="product-price">${priceText}</strong>
+          ${priceHTML}
 
           <span class="product-view-link">Ver producto →</span>
         </div>
@@ -176,7 +229,8 @@ function renderProducts() {
   `;
 
   let html = "";
-    if (decants.length) {
+
+  if (decants.length) {
     html += `
       <h2 class="catalog-section-title" style="${sectionTitleStyle}">
         Decants
@@ -259,7 +313,6 @@ async function loadBestSellers() {
   renderBestSellers();
   startBestSellerCarousel();
 }
-
 function createBestSellerCard(product, index, clone = false) {
   if (!product) {
     return `
@@ -284,9 +337,15 @@ function createBestSellerCard(product, index, clone = false) {
   const image = product.image_url ||
     "https://placehold.co/600x600?text=RV+Parfums";
 
-  const priceText = product.sale_type === "ml"
-    ? `Desde ${money(getProductPrice(product))}`
-    : money(getProductPrice(product));
+  const startingPrices = product.sale_type === "ml"
+    ? getDecantStartingPrices(product)
+    : null;
+
+  const priceHTML = product.sale_type === "ml"
+    ? (startingPrices
+        ? `<span class="price-from">Desde ${priceMarkup(startingPrices)}</span>`
+        : '<strong class="product-price">Consultar precio</strong>')
+    : priceMarkup(getUnitPrices(product));
 
   const stock = Number(product.stock || 0);
 
@@ -320,7 +379,7 @@ function createBestSellerCard(product, index, clone = false) {
           ${escapeHTML(product.description || "")}
         </p>
 
-        <strong class="product-price">${priceText}</strong>
+        ${priceHTML}
 
         <span class="product-view-link">Ver producto →</span>
       </div>
@@ -356,7 +415,8 @@ function renderBestSellers() {
 
   if (viewport) {
     viewport.style.touchAction = "pan-y";
-        viewport.addEventListener("pointerdown", (event) => {
+
+    viewport.addEventListener("pointerdown", (event) => {
       if (!event.isPrimary) return;
 
       if (event.pointerType === "mouse" && event.button !== 0) {
@@ -611,7 +671,6 @@ function openProduct(id) {
 
   document.body.classList.add("modal-open");
 }
-
 function renderModalOptions() {
   const container = $("#modal-purchase-options");
   if (!container || !currentProduct) return;
@@ -622,72 +681,69 @@ function renderModalOptions() {
     return;
   }
 
-  const price5 = Number(
-    currentProduct.price_5ml || currentProduct.price || 0
-  );
+  const options = [3, 5, 10].map((size) => {
+    const prices = getSizePrices(currentProduct, size);
+    if (prices.original <= 0) return "";
 
-  const price10 = Number(currentProduct.price_10ml || 0);
-
-  const options = [];
-
-  if (price5 > 0) {
-    options.push(`
-      <button
-        type="button"
-        class="modal-size-option selected"
-        data-modal-size="5"
-      >
-        <span>5 ml</span>
-        <strong>${money(price5)}</strong>
-      </button>
-    `);
-  }
-
-  if (price10 > 0) {
-    options.push(`
+    return `
       <button
         type="button"
         class="modal-size-option"
-        data-modal-size="10"
+        data-modal-size="${size}"
       >
-        <span>10 ml</span>
-        <strong>${money(price10)}</strong>
+        <span>${size} ml</span>
+        ${prices.onOffer
+          ? `<span class="modal-size-prices"><del>${money(prices.original)}</del><strong>${money(prices.price)}</strong></span>`
+          : `<strong>${money(prices.price)}</strong>`}
+        ${prices.onOffer ? '<small class="offer-badge">OFERTA</small>' : ""}
       </button>
-    `);
-  }
+    `;
+  }).filter(Boolean);
 
   container.innerHTML = `
     <p class="modal-options-title">ELEGÍ TU PRESENTACIÓN</p>
-    <div class="modal-size-options">
-      ${options.join("")}
-    </div>
+    <div class="modal-size-options">${options.join("")}</div>
   `;
 
-  selectedSize = price5 > 0
-    ? "5 ml"
-    : (price10 > 0 ? "10 ml" : null);
+  const firstAvailable = [3, 5, 10].find(
+    (size) => getSizePrices(currentProduct, size).original > 0
+  );
+
+  selectedSize = firstAvailable ? `${firstAvailable} ml` : null;
+
+  const firstButton = container.querySelector("[data-modal-size]");
+  firstButton?.classList.add("selected");
+}
+
+function getModalPrices() {
+  if (!currentProduct) {
+    return { original: 0, price: 0, onOffer: false };
+  }
+
+  if (currentProduct.sale_type !== "ml") {
+    return getUnitPrices(currentProduct);
+  }
+
+  const size = Number(String(selectedSize || "").replace(" ml", ""));
+  return getSizePrices(currentProduct, size || 3);
 }
 
 function getModalPrice() {
-  if (!currentProduct) return 0;
-
-  if (currentProduct.sale_type !== "ml") {
-    return Number(currentProduct.price || 0);
-  }
-
-  if (selectedSize === "10 ml") {
-    return Number(currentProduct.price_10ml || 0);
-  }
-
-  return Number(
-    currentProduct.price_5ml || currentProduct.price || 0
-  );
+  return getModalPrices().price;
 }
 
 function updateModalPrice() {
   if (!currentProduct) return;
 
-  $("#modal-product-price").textContent = money(getModalPrice());
+  const modalPrices = getModalPrices();
+  const priceElement = $("#modal-product-price");
+
+  if (priceElement) {
+    priceElement.innerHTML = modalPrices.onOffer
+      ? `<del class="price-original">${money(modalPrices.original)}</del> <strong class="price-current">${money(modalPrices.price)}</strong> <span class="offer-badge">OFERTA</span>`
+      : money(modalPrices.price);
+  }
+
   $("#modal-qty").textContent = modalQuantity;
 
   const addButton = $("#modal-add-to-cart");
@@ -716,6 +772,7 @@ function closeProductModal() {
   document.body.classList.remove("modal-open");
   currentProduct = null;
 }
+
 // ------------------------------
 // EVENTOS DE LA VENTANA
 // ------------------------------
@@ -820,6 +877,8 @@ function addCurrentProductToCart() {
       name: product.name,
       size: selectedSize,
       price,
+      originalPrice: getModalPrices().original,
+      onOffer: getModalPrices().onOffer,
       qty: modalQuantity,
       stock
     });
@@ -844,7 +903,9 @@ function renderCart() {
           ${item.size
             ? `<span>${escapeHTML(item.size)}</span>`
             : ""}
-          <span>${money(item.price)} c/u</span>
+          ${item.onOffer
+            ? `<span><del class="price-original">${money(item.originalPrice)}</del> <strong class="price-current">${money(item.price)}</strong> c/u</span>`
+            : `<span>${money(item.price)} c/u</span>`}
           <strong>${money(item.price * item.qty)}</strong>
         </div>
 
@@ -889,6 +950,7 @@ function renderCart() {
     );
   }
 }
+
 $("#cart-items")?.addEventListener("click", (event) => {
   const minus = event.target.closest("[data-cart-minus]");
   const plus = event.target.closest("[data-cart-plus]");
@@ -953,7 +1015,6 @@ $("#cart-overlay")?.addEventListener("click", closeCart);
 
 $("#search")?.addEventListener("input", renderProducts);
 $("#category-filter")?.addEventListener("change", renderProducts);
-
 // ------------------------------
 // FINALIZAR COMPRA
 // ------------------------------
@@ -1000,6 +1061,8 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     name: item.name,
     size: item.size,
     price: item.price,
+    original_price: item.originalPrice || item.price,
+    on_offer: Boolean(item.onOffer),
     quantity: item.qty
   }));
 
@@ -1031,7 +1094,7 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
       `Hola, soy ${customerName}. Quiero realizar el siguiente pedido:`,
       "",
       ...orderItems.map((item) =>
-        `• ${item.name}${item.size ? ` (${item.size})` : ""} x${item.quantity} — ${money(item.price * item.quantity)}`
+        `• ${item.name}${item.size ? ` (${item.size})` : ""} x${item.quantity} — ${item.on_offer ? `${money(item.original_price)} → ` : ""}${money(item.price * item.quantity)}`
       ),
       "",
       `TOTAL: ${money(total)}`,
@@ -1064,6 +1127,7 @@ $("#checkout-form")?.addEventListener("submit", async (event) => {
     }
   }
 });
+
 // ------------------------------
 // INICIALIZACIÓN
 // ------------------------------
