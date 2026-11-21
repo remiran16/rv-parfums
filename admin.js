@@ -1,4 +1,3 @@
-
 (() => {
   "use strict";
 
@@ -42,6 +41,40 @@
 
   let inventoryProducts = [];
   let editingImageUrl = "";
+
+  // ==========================================
+  // FUNCIONES DE PRECIOS Y OFERTAS
+  // ==========================================
+
+  function validOffer(normalPrice, offerPrice) {
+    const normal = Number(normalPrice || 0);
+    const offer = Number(offerPrice || 0);
+
+    return offer > 0 && normal > 0 && offer < normal;
+  }
+
+  function priceDisplay(normalPrice, offerPrice, label = "") {
+    const normal = Number(normalPrice || 0);
+    const offer = Number(offerPrice || 0);
+
+    if (validOffer(normal, offer)) {
+      return `
+        ${label ? `<small>${esc(label)}</small>` : ""}
+        <span class="price-original">
+          Gs. ${money(normal)}
+        </span>
+        <strong class="price-current">
+          Gs. ${money(offer)}
+        </strong>
+        <span class="offer-badge">OFERTA</span>
+      `;
+    }
+
+    return `
+      ${label ? `<small>${esc(label)}</small>` : ""}
+      <strong>Gs. ${money(normal)}</strong>
+    `;
+  }
 
   // ==========================================
   // SESIÓN Y PANEL
@@ -107,8 +140,7 @@
     renderInventory();
     renderBestSellerSelectors();
   }
-
-  function renderInventory() {
+    function renderInventory() {
     const body = $("#inventory-body");
 
     if (!inventoryProducts.length) {
@@ -118,10 +150,23 @@
     }
 
     body.innerHTML = inventoryProducts.map((product) => {
-      const prices = product.sale_type === "ml"
-        ? `5 ml: Gs. ${money(product.price_5ml)}<br>
-           10 ml: Gs. ${money(product.price_10ml)}`
-        : `Gs. ${money(product.price)}`;
+      let prices = "";
+
+      if (product.sale_type === "ml") {
+        prices = `
+          <div class="inventory-prices">
+            ${priceDisplay(product.price_3ml, product.offer_price_3ml, "3 ml")}
+            ${priceDisplay(product.price_5ml, product.offer_price_5ml, "5 ml")}
+            ${priceDisplay(product.price_10ml, product.offer_price_10ml, "10 ml")}
+          </div>
+        `;
+      } else {
+        prices = `
+          <div class="inventory-prices">
+            ${priceDisplay(product.price, product.offer_price)}
+          </div>
+        `;
+      }
 
       return `
         <tr>
@@ -190,6 +235,10 @@
     await loadBestSellers();
   }
 
+  // ==========================================
+  // EDITAR PRODUCTO
+  // ==========================================
+
   function editProduct(id) {
     const product = inventoryProducts.find(
       (item) => String(item.id) === String(id)
@@ -205,9 +254,21 @@
     form.elements.category.value = product.category || "";
     form.elements.description.value = product.description || "";
     form.elements.sale_type.value = product.sale_type || "unit";
+
+    // Precio por unidad
     form.elements.price_unit.value = product.price || "";
+    form.elements.offer_price_unit.value = product.offer_price || "";
+
+    // Precios de decants
+    form.elements.price_3ml.value = product.price_3ml || "";
+    form.elements.offer_price_3ml.value = product.offer_price_3ml || "";
+
     form.elements.price_5ml.value = product.price_5ml || "";
+    form.elements.offer_price_5ml.value = product.offer_price_5ml || "";
+
     form.elements.price_10ml.value = product.price_10ml || "";
+    form.elements.offer_price_10ml.value = product.offer_price_10ml || "";
+
     form.elements.stock.value = product.stock || 0;
     form.elements.active.checked = Boolean(product.active);
 
@@ -235,6 +296,20 @@
   }
 
   // ==========================================
+  // VALIDACIÓN DE PRECIOS
+  // ==========================================
+
+  function getPriceValue(formData, field) {
+    return Math.max(0, Number(formData.get(field) || 0));
+  }
+
+  function getOfferValue(formData, normalField, offerField) {
+    const normal = getPriceValue(formData, normalField);
+    const offer = getPriceValue(formData, offerField);
+
+    return validOffer(normal, offer) ? offer : null;
+  }
+    // ==========================================
   // GUARDAR PRODUCTO
   // ==========================================
 
@@ -273,21 +348,44 @@
 
     const saleType = formData.get("sale_type");
 
+    const unitPrice = getPriceValue(formData, "price_unit");
+
+    const price3ml = getPriceValue(formData, "price_3ml");
+    const price5ml = getPriceValue(formData, "price_5ml");
+    const price10ml = getPriceValue(formData, "price_10ml");
+
     const product = {
       name: formData.get("name"),
       brand: formData.get("brand"),
       category: formData.get("category"),
       description: formData.get("description"),
+
       sale_type: saleType,
-      price: saleType === "unit"
-        ? Number(formData.get("price_unit") || 0)
-        : 0,
-      price_5ml: saleType === "ml"
-        ? Number(formData.get("price_5ml") || 0)
-        : 0,
-      price_10ml: saleType === "ml"
-        ? Number(formData.get("price_10ml") || 0)
-        : 0,
+
+      // Precio por unidad
+      price: saleType === "unit" ? unitPrice : 0,
+      offer_price: saleType === "unit"
+        ? getOfferValue(formData, "price_unit", "offer_price_unit")
+        : null,
+
+      // Precio 3 ml
+      price_3ml: saleType === "ml" ? price3ml : 0,
+      offer_price_3ml: saleType === "ml"
+        ? getOfferValue(formData, "price_3ml", "offer_price_3ml")
+        : null,
+
+      // Precio 5 ml
+      price_5ml: saleType === "ml" ? price5ml : 0,
+      offer_price_5ml: saleType === "ml"
+        ? getOfferValue(formData, "price_5ml", "offer_price_5ml")
+        : null,
+
+      // Precio 10 ml
+      price_10ml: saleType === "ml" ? price10ml : 0,
+      offer_price_10ml: saleType === "ml"
+        ? getOfferValue(formData, "price_10ml", "offer_price_10ml")
+        : null,
+
       stock: Number(formData.get("stock") || 0),
       active: form.elements.active.checked,
       image_url: imageUrl
@@ -324,7 +422,9 @@
   function resetProductForm() {
     $("#product-form").reset();
 
-    $("#product-form").elements.id.value = "";
+    const form = $("#product-form");
+
+    form.elements.id.value = "";
 
     editingImageUrl = "";
 
@@ -337,7 +437,6 @@
 
   // ==========================================
   // LOS MÁS VENDIDOS
-  // GESTIÓN COMPLETAMENTE INDEPENDIENTE
   // ==========================================
 
   function getBestSellerSelect(slot) {
@@ -416,8 +515,7 @@
 
     msg(message, "");
   }
-
-  async function saveBestSellers() {
+    async function saveBestSellers() {
     const message = $("#bestsellers-message");
 
     const selected = [];
@@ -519,21 +617,27 @@
       const date = new Date(order.created_at).toLocaleString("es-PY");
 
       const items = Array.isArray(order.items)
-        ? order.items.map((item) =>
-            `${esc(item.name)} x ${Number(item.quantity || 1)}`
-          ).join("<br>")
+        ? order.items.map((item) => {
+            const size = item.size ? ` (${esc(item.size)})` : "";
+            return `${esc(item.name)}${size} x ${Number(item.quantity || 1)}`;
+          }).join("<br>")
         : "";
 
       return `
         <tr>
           <td>${date}</td>
+
           <td>
             <strong>${esc(order.customer_name)}</strong><br>
-            ${esc(order.phone)}
+            ${esc(order.phone || "")}
           </td>
+
           <td>${items}</td>
+
           <td>Gs. ${money(order.total)}</td>
+
           <td>${esc(order.status || "Pendiente")}</td>
+
           <td>
             <select data-status="${esc(order.id)}">
               <option value="Pendiente" ${order.status === "Pendiente" ? "selected" : ""}>Pendiente</option>
@@ -543,6 +647,7 @@
               <option value="Cancelado" ${order.status === "Cancelado" ? "selected" : ""}>Cancelado</option>
             </select>
           </td>
+
           <td>
             <button
               type="button"
