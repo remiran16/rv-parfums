@@ -1,4 +1,3 @@
-
 :root {
   --bg:#0b0b0b;
   --panel:#141414;
@@ -610,7 +609,6 @@ td small { display:block; color:var(--muted); margin-top:4px; }
 .admin-body .site-header>a:last-child { font-size:11px; color:var(--gold); }
 
 [hidden] { display:none!important; }
-
 /* TARJETAS DEL CATÁLOGO */
 
 .product-card-image {
@@ -924,8 +922,7 @@ body.modal-open { overflow:hidden; }
   .product-modal-price strong { font-size:21px; }
   .product-modal-close { top:9px; right:9px; }
   .modal-size-option { padding:12px 10px; }
-}
-
+  }
 /* ==========================================
    LOS MÁS VENDIDOS - RV PARFUMS
 ========================================== */
@@ -1169,6 +1166,7 @@ body.modal-open { overflow:hidden; }
     height: 90px;
   }
 }
+
 /* Frase final: estilo elegante y más discreto */
 .manifesto h2 {
   font-family: 'Playfair Display', serif;
@@ -1181,6 +1179,7 @@ body.modal-open { overflow:hidden; }
 .manifesto h2 em {
   font-style: italic;
 }
+
 .manifesto h2 {
   font-family: 'Playfair Display', serif;
   font-size: clamp(25px, 3.2vw, 38px);
@@ -1193,6 +1192,7 @@ body.modal-open { overflow:hidden; }
   color: #c9a45c;
   font-style: italic;
 }
+
 .manifesto h2 {
   font-family: 'Playfair Display', serif;
   font-size: clamp(25px, 3.2vw, 38px);
@@ -1204,4 +1204,224 @@ body.modal-open { overflow:hidden; }
 .manifesto h2 em {
   color: #c9a45c;
   font-style: italic;
+}
+/* ==========================================
+   PRECIOS Y OFERTAS - RV PARFUMS
+========================================== */
+
+/* Secciones de precios en administración */
+
+.price-fields-section {
+  display:grid;
+  gap:13px;
+  margin-top:5px;
+}
+
+.price-fields-section>p {
+  margin:0;
+  color:var(--gold);
+  font-size:12px;
+}
+
+.price-fields-grid {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+}
+
+.price-field-card {
+  display:grid;
+  gap:12px;
+  padding:15px;
+  background:#191919;
+  border:1px solid var(--line);
+}
+
+.price-field-title {
+  margin:0;
+  color:var(--gold);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.16em;
+}
+
+.price-field-card label {
+  display:grid;
+  gap:7px;
+}
+
+.price-field-card input {
+  width:100%;
+  min-width:0;
+}
+
+.price-field-card label:nth-child(2) {
+  color:var(--gold2);
+}
+
+.price-fields-section .muted {
+  margin:0;
+  font-size:10px;
+}
+
+/* Inventario: presentación de precios */
+
+.inventory-prices {
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  min-width:120px;
+}
+
+.inventory-prices small {
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  margin:0 0 3px;
+}
+
+.inventory-prices strong {
+  display:block;
+  color:var(--gold);
+  font-size:11px;
+}
+
+/* Precio original tachado */
+
+.price-original {
+  display:inline-block;
+  color:#999!important;
+  font-size:10px!important;
+  font-weight:400!important;
+  text-decoration:line-through;
+  text-decoration-color:#b66d63;
+  margin-right:5px;
+}
+
+/* Precio rebajado */
+
+.price-current {
+  display:inline-block;
+  color:var(--gold2)!important;
+  font-size:14px!important;
+  font-weight:700!important;
+}
+
+/* Etiqueta de oferta */
+
+.offer-badge {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  padding:4px 7px;
+  background:var(--gold);
+  color:#15120d;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.12em;
+  line-height:1;
+}
+
+/* Presentación de precios en tarjetas */
+
+.price-offer-wrap {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px 8px;
+}
+
+.price-offer-wrap .price-original {
+  font-size:10px!important;
+}
+
+.price-offer-wrap .price-current {
+  font-size:14px!important;
+}
+
+/* Precios dentro del modal */
+
+.modal-size-prices {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:5px;
+}
+
+.modal-size-prices .price-original {
+  font-size:10px!important;
+}
+
+.modal-size-prices .price-current {
+  font-size:14px!important;
+}
+
+.modal-size-prices .offer-badge {
+  margin-top:2px;
+}
+
+.modal-size-option .price-original {
+  color:#999!important;
+}
+
+.modal-size-option .price-current {
+  color:var(--gold2)!important;
+}
+
+/* Precio principal seleccionado en el modal */
+
+.product-modal-price .price-original {
+  font-size:12px!important;
+}
+
+.product-modal-price .price-current {
+  font:24px "Playfair Display",serif!important;
+  color:var(--gold2)!important;
+}
+
+/* Precio de ofertas en el carrito */
+
+.cart-item-info .price-original {
+  font-size:10px!important;
+}
+
+.cart-item-info .price-current {
+  color:var(--gold2)!important;
+  font-size:12px!important;
+}
+
+/* Ajustes para celulares */
+
+@media(max-width:650px) {
+
+  .price-fields-grid {
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+
+  .price-field-card {
+    padding:13px;
+  }
+
+  .inventory-prices {
+    min-width:105px;
+  }
+
+  .inventory-prices .price-current {
+    font-size:12px!important;
+  }
+
+  .price-offer-wrap {
+    gap:5px;
+  }
+
+  .product-modal-price .price-current {
+    font-size:21px!important;
+  }
+
+  .modal-size-prices {
+    gap:4px;
+  }
+
 }
